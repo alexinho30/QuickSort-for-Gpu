@@ -3,7 +3,20 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "data_structures.h"
+
+typedef struct{
+	int sstart ;
+	int send ;
+	int pivot_value ; 	
+} sequence;
+
+typedef struct {
+    sequence *arr ;
+    int cur_size ;
+    int tot_size ;
+    int head ;
+    int tail ; 
+} Queue;
 
 
 void initQueue(Queue* q, int initSize);

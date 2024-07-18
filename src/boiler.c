@@ -15,8 +15,7 @@ void ocl_check(cl_int err, const char *msg, ...) {
 	}
 }
 
-// Return the ID of the platform specified in the OCL_PLATFORM
-// environment variable (or the first one if none specified)
+
 cl_platform_id select_platform() {
 	cl_uint nplats;
 	cl_int err;
@@ -54,8 +53,7 @@ cl_platform_id select_platform() {
 	return choice;
 }
 
-// Return the ID of the device (of the given platform p) specified in the
-// OCL_DEVICE environment variable (or the first one if none specified)
+
 cl_device_id select_device(cl_platform_id p)
 {
 	cl_uint ndevs;
@@ -94,7 +92,7 @@ cl_device_id select_device(cl_platform_id p)
 	return choice;
 }
 
-// Create a one-device context
+
 cl_context create_context(cl_platform_id p, cl_device_id d)
 {
 	cl_int err;
@@ -110,19 +108,17 @@ cl_context create_context(cl_platform_id p, cl_device_id d)
 	return ctx;
 }
 
-// Create a command queue for the given device in the given context
+
 cl_command_queue create_queue(cl_context ctx, cl_device_id d)
 {
 	cl_int err;
 
 	cl_command_queue que = clCreateCommandQueue(ctx, d,
-		CL_QUEUE_PROFILING_ENABLE, &err); // mi da informazioni sui comandi accodati si puo mettere l'autoorder
+		CL_QUEUE_PROFILING_ENABLE, &err); 
 	ocl_check(err, "create queue");
 	return que;
 }
 
-// Compile the device part of the program, stored in the external
-// file `fname`, for device `dev` in context `ctx`
 cl_program create_program(const char * const fname, cl_context ctx,
 	cl_device_id dev)
 {
@@ -168,10 +164,32 @@ cl_program create_program(const char * const fname, cl_context ctx,
 	return prg;
 }
 
-// Runtime of an event, in nanoseconds. Note that if NS is the
-// runtimen of an event in nanoseconds and NB is the number of byte
-// read and written during the event, NB/NS is the effective bandwidth
-// expressed in GB/s
+
+void create_resources(cl_resources* resources, const char *const  ocl_filename){
+	resources->p = select_platform() ; 
+	resources->d = select_device(resources->p) ;
+	resources->ctx = create_context(resources->p, resources->d) ; 
+	resources->que = create_queue(resources->ctx, resources->d) ;
+	resources->prog = create_program(ocl_filename, resources->ctx, resources->d) ; 
+}
+
+void release_resources(cl_resources* resources){
+	cl_int err ; 
+
+	err = clReleaseCommandQueue(resources->que) ;
+	ocl_check(err, "release commandQueue") ; 
+
+	err = clReleaseContext(resources->ctx) ;
+	ocl_check(err, "release contex") ;  
+
+	err = clReleaseDevice(resources->d) ;
+	ocl_check(err, "release device") ;  
+
+	err = clReleaseProgram(resources->prog) ;
+	ocl_check(err, "release program") ;   
+}
+
+
 cl_ulong runtime_ns(cl_event evt)
 {
 	cl_int err;
@@ -198,8 +216,6 @@ cl_ulong total_runtime_ns(cl_event from, cl_event to)
 	return (end - start);
 }
 
-
-// Runtime of an event, in milliseconds
 double runtime_ms(cl_event evt)
 {
 	return runtime_ns(evt)*1.0e-6;
@@ -210,13 +226,12 @@ double total_runtime_ms(cl_event from, cl_event to)
 	return total_runtime_ns(from, to)*1.0e-6;
 }
 
-/* divide gws by lws rounding up */
 size_t round_div_up(size_t gws, size_t lws)
 {
 	return ((gws + lws - 1)/lws);
 }
 
-/* round gws to the next multiple of lws */
+
 size_t round_mul_up(size_t gws, size_t lws)
 {
 	return ((gws + lws - 1)/lws)*lws;

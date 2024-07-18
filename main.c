@@ -2,7 +2,6 @@
 #include<stdlib.h>
 #include<time.h>
 
-#define CL_TARGET_OPENCL_VERSION 120
 #include "include/Quicksort_stream_compacting.h"
 #include "include/boiler.h"
 #include "include/quicksort_cpu_version.h"
@@ -109,7 +108,7 @@
 */
 int main(int argc, char **argv) {
 	if(argc != 4){
-		handle_error("./main <nels> <lws> <nwg_cu> <min_len_first_phase>") ; 
+		handle_error("./main <nels> <lws> <nwg_cu>") ; 
 	}
 
 	const int nels = atoi(argv[1]) ;
@@ -135,14 +134,10 @@ int main(int argc, char **argv) {
 
 	int *vec = calloc(nels, sizeof(int));
 	init_array(vec, nels);
-	//print_vec(vec, 0, nels -1) ; 
-	//int*vec_copy =  calloc(nels, sizeof(int)) ;
-	//copy_vec(vec, vec_copy, nels) ;  
-	//quicksort(vec_copy, 0, nels - 1) ; 
-	//print_vec(vec_copy, 0, nels -1) ; 
-	printf("cpu version quicksort executed\n") ;
 
-	quickSortGpu(vec, nels, lws, nwg_cu) ;
+	cl_resources resource ; 
+	create_resources(&resource, "quickSort.ocl") ; 
+	quickSortGpu(vec, nels, lws, nwg_cu, &resource) ;
 
 	return 0 ;
 }

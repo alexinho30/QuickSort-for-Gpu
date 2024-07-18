@@ -12,7 +12,7 @@ int log_b2(int val){
 
 void handle_error(const char *err) {
 	fprintf(stderr, "%s\n", err);
-	exit(1);
+	exit(EXIT_FAILURE);
 }
 
 void init_array(int *vec, const int nels){
@@ -48,21 +48,6 @@ void copy_vec_(const int* vec, int* vec_copy, const int sstart, const int nels){
 	}
 }
 
-int dummy_median(int* vec, const int sstart, const int send){
-	int vec1[send - sstart + 1] ; 
-	copy_vec_(vec, vec1, sstart, send - sstart + 1) ; 
-	for(int i = 0 ; i < send - sstart + 1 ; i++){
-		for(int j = 0 ; j < send - sstart + 1 ; j++){
-			if(vec1[i] > vec1[j]){
-				int tmp = vec1[i] ; 
-				vec1[i] = vec1[j] ; 
-				vec1[j] = tmp ; 
-			}
-		}
-	}
-	return vec1[(send - sstart + 1)/2 ] ; 
-}
-
 void bubble_sort(int*vec, const int nels){
 	for(int i = 0 ; i < nels ; i++){
 		for(int j = 0 ; j < nels - 1; j++){
@@ -75,12 +60,11 @@ void bubble_sort(int*vec, const int nels){
 	}
 }
 
-bool check_result(const int* vec, const int* vec_copy, const int nels){
+void check_result(const int* vec, const int* vec_copy, const int nels){
 	for(int i = 0 ; i < nels ; i++){
 		if(vec[i] != vec_copy[i]){
 			fprintf(stderr, "error vec[%d] = %d different from expected[%d] = %d\n", i, vec[i], i, vec_copy[i]) ;
-			return true ;  
+			exit(EXIT_FAILURE) ;   
 		}
 	}
-	return false ; 
 }

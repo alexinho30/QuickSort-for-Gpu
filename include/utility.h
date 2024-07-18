@@ -15,12 +15,10 @@ void init_array(int* vec, const int nels) ;
 
 void print_vec(const int*vec, const int sstart, const int send) ;
 
-int dummy_median(int* vec, const int sstart, const int send) ; 
-
 void copy_vec(const int* vec, int* vec_copy, const int nels) ; 
 
 void bubble_sort(int* vec, const int nels) ; 
 
-bool check_result(const int* vec, const int* vec_copy, const int nels) ; 
+void check_result(const int* vec, const int* vec_copy, const int nels) ; 
 
 #endif
