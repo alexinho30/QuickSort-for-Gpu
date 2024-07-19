@@ -2,7 +2,8 @@
 #include<math.h>
 #include <stdbool.h>
 #include "../include/quicksort_cpu_version.h"
-#define MAX_NUM_SEQ 1000000 
+#define MAX_NUM_SEQ 300000
+#define TEST 1
 
 cl_event split_elements(cl_command_queue q, cl_kernel splitting_elements,
 		cl_mem d_buf, cl_mem lt, cl_mem gt, cl_mem bit_map_sup, cl_mem bit_map_inf, cl_int nels, cl_int sstart, cl_int lws_, cl_int pivot, const int nwg){
@@ -191,17 +192,22 @@ cl_event partition_copy(cl_command_queue que, cl_kernel partition_copy, cl_mem i
 void quickSortGpu(const int* vec,  const int nels, const int lws, const int nwg_cu, cl_resources* resources){
 
 	if(resources == NULL){
-		fprintf(stderr, "reosurces are set to null	\n") ; 
-		exit(EXIT_FAILURE) ; 
+		handle_error("resources set to null\n") ; 
 	}
 
-	int*vec_copy =  calloc(nels, sizeof(int)) ;
-	copy_vec(vec, vec_copy, nels) ; 
-	quicksort(vec_copy, 0, nels - 1) ;
+	#if TEST
+		times* t = calloc(MAX_NUM_SEQ, sizeof(times)) ; 
+		sequences_info* s = calloc(MAX_NUM_SEQ, sizeof(sequences_info)) ;  
+		int*vec_copy =  calloc(nels, sizeof(int)) ;
 
-	time_t start, end ; 
-	double time_used ; 
-	start = clock() ; 
+		copy_vec(vec, vec_copy, 0, nels - 1) ; 
+		quicksort(vec_copy, 0, nels - 1) ;
+
+		time_t start, end ; 
+		double time_used ; 
+		start = clock() ; 
+	
+	#endif
 
 	cl_uint ncu = 0;
 	cl_int err ;
@@ -254,6 +260,8 @@ void quickSortGpu(const int* vec,  const int nels, const int lws, const int nwg_
     start_sequence.send = nels - 1 ; 
 	start_sequence.pivot_value = vec[rand()%nels] ; 
 	enqueue(&sequences_to_partion, &start_sequence) ;  
+
+	int iteration = 0; 
 
     while(!is_Empty(&sequences_to_partion)){ 
 
@@ -309,10 +317,10 @@ void quickSortGpu(const int* vec,  const int nels, const int lws, const int nwg_
 
 		clWaitForEvents(3, scan_evt) ; 
 
-		cl_event partion_evt = partition(resources->que, partitioning, in, buff_tmp, bit_map_inf, bit_map_sup,  lt_cpu[current_nwg - 1], gt_cpu[current_nwg -1], curr_seq, current_nels, lws, current_nwg) ; 
-		clWaitForEvents(1, &partion_evt) ;
-		cl_event partion_evt_1 = partition_copy(resources->que, partitioning_copy, in, buff_tmp, lt_cpu[current_nwg - 1], gt_cpu[current_nwg -1], curr_seq, current_nels, lws, current_nwg) ;
-		clWaitForEvents(1, &partion_evt_1) ; 
+		cl_event partition_evt = partition(resources->que, partitioning, in, buff_tmp, bit_map_inf, bit_map_sup,  lt_cpu[current_nwg - 1], gt_cpu[current_nwg -1], curr_seq, current_nels, lws, current_nwg) ; 
+		clWaitForEvents(1, &partition_evt) ;
+		cl_event partition_copy_evt = partition_copy(resources->que, partitioning_copy, in, buff_tmp, lt_cpu[current_nwg - 1], gt_cpu[current_nwg -1], curr_seq, current_nels, lws, current_nwg) ;
+		clWaitForEvents(1, &partition_copy_evt) ; 
 
 		sequence s1, s2 ; 
 
@@ -403,26 +411,43 @@ void quickSortGpu(const int* vec,  const int nels, const int lws, const int nwg_
 					1, &read_s2_evt, &unmap_s2_evt);
 			ocl_check(err, "unmap buffer out") ; 
 		}
+
+		#if TEST 
+			t[iteration].split_elements_time = runtime_ns(evt_split_elements) ;
+			t[iteration].partial_scan_time = runtime_ns(scan_evt[0]) ; 
+			t[iteration].scan_tails_time = runtime_ns(scan_evt[1]) ; 
+			t[iteration].scan_update_time = runtime_ns(scan_evt[2]) ; 
+			t[iteration].partition_time = runtime_ns(partition_evt) ; 
+			t[iteration].partition_copy_time = runtime_ns(partition_copy_evt) ; 
+			s[iteration].current_nels = current_nels ; 
+			s[iteration].current_nwg = current_nwg ; 
+			iteration++; 
+		#endif
     } 
 
-	end = clock() ; 
-	time_used = ((double)(end - start))/CLOCKS_PER_SEC ; 
-	printf("total time :  %f\n", time_used) ; 
+	#if TEST 
 
-	cl_event read_out_evt ; 
-	cl_event unmap_out_evt ; 
-	int* out = NULL;
+		end = clock() ; 
+		time_used = ((double)(end - start))/CLOCKS_PER_SEC ; 
+		printf("total time :  %f\n", time_used) ; 
 
-	out = clEnqueueMapBuffer(resources->que, in, CL_TRUE,
-			CL_MAP_READ | CL_MAP_WRITE, 0, sizeof(cl_int)*nels,
-				0, NULL, &read_out_evt , &err) ; 
-	ocl_check(err, "read buffer out") ;
+		bench_mark(t, iteration, s, lws) ; 
 
-	check_result(out, vec_copy, nels) ; 
+		cl_event read_out_evt ; 
+		cl_event unmap_out_evt ; 
+		int* out = NULL;
 
-	err = clEnqueueUnmapMemObject(resources->que, in, out,
-			1, &read_out_evt, &unmap_out_evt);
-	ocl_check(err, "unmap buffer out");
+		out = clEnqueueMapBuffer(resources->que, in, CL_TRUE,
+				CL_MAP_READ | CL_MAP_WRITE, 0, sizeof(cl_int)*nels,
+					0, NULL, &read_out_evt , &err) ; 
+		ocl_check(err, "read buffer out") ;
+
+		check_result(out, vec_copy, nels) ; 
+
+		err = clEnqueueUnmapMemObject(resources->que, in, out,
+				1, &read_out_evt, &unmap_out_evt);
+		ocl_check(err, "unmap buffer out");
+	#endif 
 
 	release_queue(&sequences_to_partion) ; 	
 		
@@ -442,79 +467,3 @@ void quickSortGpu(const int* vec,  const int nels, const int lws, const int nwg_
 
 	return ; 	
 }
-
-
-/*s1.pivot_value = median_computation(que, d_buf, gt, lt, bit_map_inf, bit_map_sup, tails_inf, tails_sup, 
-	                                                   splitting_elements, scan_gpu, scan_update, partitioning, s1.sstart, s1.send, 1 - idx_buf, lws, nwg, nels) ; 
-*/
-
-/*start_sequence.pivot_value = median_computation(que, d_buf, gt, lt, bit_map_inf, bit_map_sup, tails_inf, tails_sup, 
-	                                                   splitting_elements, scan_gpu, scan_update, partitioning, 0, nels -1, idx_buf, lws, nwg, nels) ; 
-*/
-
-
-
-/*	int* bit_map_sup_cpu = NULL ;
-		int* bit_map_inf_cpu = NULL ;
-		cl_event read_evt_bit_sup ; 
-		cl_event read_evt_bit_inf ;   
-
-		bit_map_sup_cpu = clEnqueueMapBuffer(que, bit_map_sup, CL_TRUE,
-					CL_MAP_READ | CL_MAP_WRITE, 0, sizeof(cl_int)*current_nels,
-						0, NULL, &read_evt_bit_sup , &err) ; 
-		ocl_check(err, "read buffer lt") ; 
-
-		bit_map_inf_cpu = clEnqueueMapBuffer(que, bit_map_inf, CL_TRUE,
-					CL_MAP_READ | CL_MAP_WRITE, 0, sizeof(cl_int)*current_nels,
-						0, NULL, &read_evt_bit_inf, &err);
-		ocl_check(err, "read buffer gt");
-
-		printf("bit map sup : ") ;
-		for(int j = 0 ; j < current_nels ; j++) printf("%d ", bit_map_sup_cpu[j]) ; 
-		printf("\n bit map inf : ") ;
-		for(int j = 0 ; j < current_nels ; j++) printf("%d ", bit_map_inf_cpu[j]) ; 
-		printf("\n") ; 
-
-		cl_event unmap_evt_bit_sup;
-		err = clEnqueueUnmapMemObject(que, bit_map_sup, bit_map_sup_cpu,
-					1, &read_evt_bit_sup, &unmap_evt_bit_sup);
-		ocl_check(err, "unmap bit sup");
-
-		cl_event unmap_evt_bit_inf;
-		err = clEnqueueUnmapMemObject(que, bit_map_inf, bit_map_inf_cpu,
-					1, &read_evt_bit_inf, &unmap_evt_bit_inf);
-		ocl_check(err, "unmap bit inf");*/
-
-
-/*
-	int* bit_map_sup_cpu_ = NULL ;
-		int* bit_map_inf_cpu_ = NULL ;
-		cl_event read_evt_bit_sup_ ; 
-		cl_event read_evt_bit_inf_ ;   
-
-		bit_map_sup_cpu_ = clEnqueueMapBuffer(que, bit_map_sup, CL_TRUE,
-					CL_MAP_READ | CL_MAP_WRITE, 0, sizeof(cl_int)*current_nels,
-						0, NULL, &read_evt_bit_sup_ , &err) ; 
-		ocl_check(err, "read buffer lt") ; 
-
-		bit_map_inf_cpu_ = clEnqueueMapBuffer(que, bit_map_inf, CL_TRUE,
-					CL_MAP_READ | CL_MAP_WRITE, 0, sizeof(cl_int)*current_nels,
-						0, NULL, &read_evt_bit_inf_, &err);
-		ocl_check(err, "read buffer gt");
-
-		printf("bit map sup : ") ;
-		for(int j = 0 ; j < current_nels ; j++) printf("%d ", bit_map_sup_cpu_[j]) ; 
-		printf("\n bit map inf : ") ;
-		for(int j = 0 ; j < current_nels ; j++) printf("%d ", bit_map_inf_cpu_[j]) ; 
-		printf("\n") ; 
-
-		cl_event unmap_evt_bit_sup_;
-		err = clEnqueueUnmapMemObject(que, bit_map_sup, bit_map_sup_cpu_,
-					1, &read_evt_bit_sup_, &unmap_evt_bit_sup_);
-		ocl_check(err, "unmap bit sup");
-
-		cl_event unmap_evt_bit_inf_;
-		err = clEnqueueUnmapMemObject(que, bit_map_inf, bit_map_inf_cpu_,
-					1, &read_evt_bit_inf_, &unmap_evt_bit_inf_);
-		ocl_check(err, "unmap bit inf");
-*/

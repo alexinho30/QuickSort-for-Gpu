@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "data_structures.h": "c",
-        "quicksort_stream_compacting.h": "c"
+        "quicksort_stream_compacting.h": "c",
+        "quicksort_cpu_version.h": "c"
     }
 }
