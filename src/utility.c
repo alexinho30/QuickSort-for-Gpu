@@ -19,7 +19,7 @@ void init_array(int *vec, const int nels){
 	srand(21);
 
 	for (int i = 0; i < nels; i++){
-		vec[i] = rand()%10000000;
+		vec[i] = rand()%1000000;
 	}
 }
 

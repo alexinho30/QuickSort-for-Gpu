@@ -155,6 +155,41 @@ cl_mem bit_map_sup,cl_int lt, cl_int gt, sequence seq, const int nels, const int
     return partition_evt; 
 }
 
+//resources->que, partitioning_copy, d_buf[0], d_buf[1], lt_cpu[current_nwg - 1], gt_cpu[current_nwg -1], curr_seq, current_nels, lws, current_nwg
+
+cl_event partition_copy(cl_command_queue que, cl_kernel partition_copy, cl_mem in, cl_mem out, const int lt, const int gt, const sequence seq, const int nels, const int lws_, const int nwg){
+
+	cl_int err ; 
+	cl_event partition_evt ; 
+
+	size_t lws[] = {lws_} ; 
+	size_t gws[] = {nwg*lws[0]} ; 
+
+	err = clSetKernelArg(partition_copy, 0, sizeof(cl_int), &nels) ;
+	ocl_check(err, "set kernel nels ") ;
+
+	err = clSetKernelArg(partition_copy, 1, sizeof(sequence), &seq) ;
+	ocl_check(err, "set kernel seq ") ;
+
+	err = clSetKernelArg(partition_copy, 2, sizeof(in), &in) ;
+	ocl_check(err, "set kernel in") ;
+
+	err = clSetKernelArg(partition_copy, 3, sizeof(out), &out) ;
+	ocl_check(err, "set kernel out") ;
+
+	err = clSetKernelArg(partition_copy, 4, sizeof(cl_int), &lt) ;
+	ocl_check(err, "set kernel lt") ;
+
+	err = clSetKernelArg(partition_copy, 5, sizeof(cl_int), &gt) ;
+	ocl_check(err, "set kernel gt") ;
+
+	err = clEnqueueNDRangeKernel(que,  partition_copy, 1, NULL, gws, lws, 0, NULL, &partition_evt) ;
+    ocl_check(err, "enqueue split elements kernel") ; 
+
+    return partition_evt; 
+
+}
+
 int median_computation(cl_command_queue que, cl_mem* d_buf, cl_mem gt, cl_mem lt, cl_mem bit_map_inf, 
 cl_mem bit_map_sup, cl_mem tails_inf , cl_mem tails_sup, cl_kernel splitting_elements,cl_kernel scan_gpu, cl_kernel scan_update, 
 cl_kernel partitioning , int sstart, int send, int buf_index, int lws, const int nwg, const int nels){
@@ -341,7 +376,8 @@ void quickSortGpu(const int* vec,  const int nels, const int lws, const int nwg_
 	cl_kernel splitting_elements;
 	cl_kernel scan_gpu ; 
 	cl_kernel scan_update ;
-	cl_kernel partitioning ;  
+	cl_kernel partitioning ;
+	cl_kernel partitioning_copy ;   
 
 	splitting_elements = clCreateKernel(resources->prog, "split_elements", &err);	
 	ocl_check(err, "create kernel split_elements");
@@ -349,8 +385,10 @@ void quickSortGpu(const int* vec,  const int nels, const int lws, const int nwg_
 	ocl_check(err, "create kernel scan");
 	scan_update = clCreateKernel(resources->prog, "scan_update", &err);	
 	ocl_check(err, "create kernel scan_update");
-	partitioning = clCreateKernel(resources->prog, "partition", &err);	
-	ocl_check(err, "create kernel partition");
+	partitioning = clCreateKernel(resources->prog, "partition_buff_tmp", &err);	
+	ocl_check(err, "create kernel partition_buff_tmp");
+	partitioning_copy = clCreateKernel(resources->prog, "partition_copy", &err);	
+	ocl_check(err, "create kernel partition_buff_tmp");
 
 	cl_mem d_buf[2] ;
 	d_buf[0] = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, (nels)*sizeof(cl_int), (void*)vec, &err); 
@@ -369,8 +407,6 @@ void quickSortGpu(const int* vec,  const int nels, const int lws, const int nwg_
 	ocl_check(err, "create buffer bit map inf");
 	cl_mem tails_sup = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR , nwg*sizeof(cl_int), NULL, &err);
 	ocl_check(err, "create buffer bit map inf");
-	
-	int idx_buf = 0 ; 
    
     Queue sequences_to_partion ;
     initQueue(&sequences_to_partion, MAX_NUM_SEQ) ;
@@ -387,7 +423,7 @@ void quickSortGpu(const int* vec,  const int nels, const int lws, const int nwg_
 		const int current_nels = curr_seq.send - curr_seq.sstart + 1 ;
 		int current_nwg = nwg ; 
 
-        cl_event evt_split_elements = split_elements(resources->que, splitting_elements, d_buf[idx_buf], lt, gt, bit_map_sup, bit_map_inf, current_nels, curr_seq.sstart, lws, curr_seq.pivot_value, current_nwg) ;  
+        cl_event evt_split_elements = split_elements(resources->que, splitting_elements, d_buf[0], lt, gt, bit_map_sup, bit_map_inf, current_nels, curr_seq.sstart, lws, curr_seq.pivot_value, current_nwg) ;  
 
 		clWaitForEvents(1, &evt_split_elements) ;
 
@@ -431,9 +467,10 @@ void quickSortGpu(const int* vec,  const int nels, const int lws, const int nwg_
 
 		clWaitForEvents(3, scan_evt) ; 
 
-		cl_event partion_evt = partition(resources->que, partitioning, d_buf[idx_buf], d_buf[1 - idx_buf], bit_map_inf, bit_map_sup,  lt_cpu[current_nwg - 1], gt_cpu[current_nwg -1], curr_seq, nels, lws, current_nwg) ; 
-
-		clWaitForEvents(1, &partion_evt) ; 
+		cl_event partion_evt = partition(resources->que, partitioning, d_buf[0], d_buf[1], bit_map_inf, bit_map_sup,  lt_cpu[current_nwg - 1], gt_cpu[current_nwg -1], curr_seq, current_nels, lws, current_nwg) ; 
+		clWaitForEvents(1, &partion_evt) ;
+		cl_event partion_evt_1 = partition_copy(resources->que, partitioning_copy, d_buf[0], d_buf[1], lt_cpu[current_nwg - 1], gt_cpu[current_nwg -1], curr_seq, current_nels, lws, current_nwg) ;
+		clWaitForEvents(1, &partion_evt_1) ; 
 
 		sequence s1, s2 ; 
 
@@ -460,14 +497,14 @@ void quickSortGpu(const int* vec,  const int nels, const int lws, const int nwg_
 			cl_event unmap_buf_out_evt ; 
 			int* out = NULL;
 
-			out = clEnqueueMapBuffer(resources->que, d_buf[1 -idx_buf], CL_TRUE,
+			out = clEnqueueMapBuffer(resources->que, d_buf[0], CL_TRUE,
 					CL_MAP_READ | CL_MAP_WRITE, sizeof(cl_int)*s1.sstart, sizeof(cl_int)*s1_dim,
 						0, NULL, &read_buf_out_evt , &err) ; 
 			ocl_check(err, "read buffer out") ;
 
 			s1.pivot_value  = out[s1_dim - 1] ; 
 
-			err = clEnqueueUnmapMemObject(resources->que, d_buf[1 -idx_buf], out,
+			err = clEnqueueUnmapMemObject(resources->que, d_buf[0], out,
 					1, &read_buf_out_evt, &unmap_buf_out_evt);
 			ocl_check(err, "unmap buffer out");
 
@@ -478,14 +515,14 @@ void quickSortGpu(const int* vec,  const int nels, const int lws, const int nwg_
 			cl_event unmap_buf_out_evt ; 
 			int* out = NULL;
 
-			out = clEnqueueMapBuffer(resources->que, d_buf[1 -idx_buf], CL_TRUE,
+			out = clEnqueueMapBuffer(resources->que, d_buf[0], CL_TRUE,
 					CL_MAP_READ | CL_MAP_WRITE, sizeof(cl_int)*s1.sstart, sizeof(cl_int)*s1_dim,
 						0, NULL, &read_buf_out_evt , &err) ; 
 			ocl_check(err, "read buffer out") ;
 
 			quicksort(out, 0, s1_dim - 1) ;
 
-			err = clEnqueueUnmapMemObject(resources->que, d_buf[1 -idx_buf], out,
+			err = clEnqueueUnmapMemObject(resources->que, d_buf[0], out,
 					1, &read_buf_out_evt, &unmap_buf_out_evt);
 			ocl_check(err, "unmap buffer out");
 		}
@@ -496,14 +533,14 @@ void quickSortGpu(const int* vec,  const int nels, const int lws, const int nwg_
 			cl_event unmap_buf_out_evt ; 
 			int* out = NULL;
 
-			out = clEnqueueMapBuffer(resources->que, d_buf[1 - idx_buf], CL_TRUE,
+			out = clEnqueueMapBuffer(resources->que, d_buf[0], CL_TRUE,
 					CL_MAP_READ | CL_MAP_WRITE, sizeof(cl_int)*s2.sstart, sizeof(cl_int)*s2_dim,
 						0, NULL, &read_buf_out_evt , &err) ; 
 			ocl_check(err, "read buffer out") ;
 
-			s2.pivot_value  = out[s2_dim - 1] ;
+			s2.pivot_value  = out[s2_dim - 1] ; 
 
-			err = clEnqueueUnmapMemObject(resources->que, d_buf[1 -idx_buf], out,
+			err = clEnqueueUnmapMemObject(resources->que, d_buf[0], out,
 					1, &read_buf_out_evt, &unmap_buf_out_evt);
 			ocl_check(err, "unmap buffer out") ; 
  
@@ -514,19 +551,18 @@ void quickSortGpu(const int* vec,  const int nels, const int lws, const int nwg_
 			cl_event unmap_buf_out_evt ; 
 			int* out = NULL;
 
-			out = clEnqueueMapBuffer(resources->que, d_buf[1 - idx_buf], CL_TRUE,
+			out = clEnqueueMapBuffer(resources->que, d_buf[0], CL_TRUE,
 					CL_MAP_READ | CL_MAP_WRITE, sizeof(cl_int)*s2.sstart, sizeof(cl_int)*s2_dim,
 						0, NULL, &read_buf_out_evt , &err) ; 
 			ocl_check(err, "read buffer out") ;
 
 			quicksort(out, 0, s2_dim - 1) ;
 
-			err = clEnqueueUnmapMemObject(resources->que, d_buf[1 -idx_buf], out,
+			err = clEnqueueUnmapMemObject(resources->que, d_buf[0], out,
 					1, &read_buf_out_evt, &unmap_buf_out_evt);
 			ocl_check(err, "unmap buffer out") ; 
 		}
  
-		idx_buf = 1 - idx_buf ; 
     } 
 
 	end = clock() ; 
@@ -537,14 +573,16 @@ void quickSortGpu(const int* vec,  const int nels, const int lws, const int nwg_
 	cl_event unmap_buf_out_evt ; 
 	int* out = NULL;
 
-	out = clEnqueueMapBuffer(resources->que, d_buf[idx_buf], CL_TRUE,
+	out = clEnqueueMapBuffer(resources->que, d_buf[0], CL_TRUE,
 			CL_MAP_READ | CL_MAP_WRITE, 0, sizeof(cl_int)*nels,
 				0, NULL, &read_buf_out_evt , &err) ; 
 	ocl_check(err, "read buffer out") ;
 
+	//print_vec(out, 0, nels -1) ; 
+
 	check_result(out, vec_copy, nels) ; 
 
-	err = clEnqueueUnmapMemObject(resources->que, d_buf[idx_buf], out,
+	err = clEnqueueUnmapMemObject(resources->que, d_buf[0], out,
 			1, &read_buf_out_evt, &unmap_buf_out_evt);
 	ocl_check(err, "unmap buffer out");
 
