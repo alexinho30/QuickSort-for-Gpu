@@ -190,165 +190,6 @@ cl_event partition_copy(cl_command_queue que, cl_kernel partition_copy, cl_mem i
 
 }
 
-int median_computation(cl_command_queue que, cl_mem* d_buf, cl_mem gt, cl_mem lt, cl_mem bit_map_inf, 
-cl_mem bit_map_sup, cl_mem tails_inf , cl_mem tails_sup, cl_kernel splitting_elements,cl_kernel scan_gpu, cl_kernel scan_update, 
-cl_kernel partitioning , int sstart, int send, int buf_index, int lws, const int nwg, const int nels){
-
-	bool pivot_found = false ; 
-	int pivot ; 
-	cl_int err ; 
-
-	srand(21) ; 
-
-	int median  = 0; 
-	if((send - sstart + 1 ) & 1){
-		median = (send - sstart + 1)/2 ; 
-	}
-	else{
-		median = (send - sstart + 1)/2 - 1; 
-	}
-
-	while(!pivot_found){
-
-		cl_event read_buf_out_evt ; 
-		cl_event unmap_buf_out_evt ; 
-		int* out = NULL; 
-
-		const int current_nels = send - sstart + 1 ; 
-		int current_nwg = nwg ; 
-
-		if(current_nels <= lws){
-
-				out = clEnqueueMapBuffer(que, d_buf[buf_index], CL_TRUE,
-							CL_MAP_READ , sstart*sizeof(cl_int), sizeof(cl_int)*(current_nels),
-								0, NULL, &read_buf_out_evt , &err) ; 
-				ocl_check(err, "read buffer out") ;
-
-				quicksort(out, 0, current_nels - 1) ; 
-
-				err = clEnqueueUnmapMemObject(que, d_buf[buf_index], out,
-							1, &read_buf_out_evt, &unmap_buf_out_evt);
-				ocl_check(err, "unmap buffer out");
-
-				return out[median - 1] ;
-		}
-
-		const int pivot_pos = rand()%(send - sstart) + sstart ; 
-
-		int* val = NULL ;
-		cl_event read_pivot_evt ; 
-		val = clEnqueueMapBuffer(que, d_buf[buf_index], CL_TRUE,
-						CL_MAP_READ, pivot_pos*sizeof(cl_int), sizeof(cl_int),
-							0, NULL, &read_pivot_evt, &err) ; 
-		ocl_check(err, "read pivot") ;
-
-		pivot = *val ; 
-
-		cl_event unmap_read_seq_evt;
-			err = clEnqueueUnmapMemObject(que, d_buf[buf_index], val,
-						1, &read_pivot_evt, &unmap_read_seq_evt);
-		ocl_check(err, "unmap pivot");
-
-		while(current_nwg*lws > current_nels){
-			current_nwg/=2 ; 
-		} 
-
-		cl_event evt_split_elements = split_elements(que, splitting_elements, d_buf[buf_index], lt, gt, bit_map_sup, bit_map_inf, current_nels, sstart, lws, pivot, current_nwg) ;  
-	
-		clWaitForEvents(1, &evt_split_elements) ;
-
-		cl_event read_evt_lt ;
-		cl_event read_evt_gt ; 
-	
-			int* lt_cpu = NULL ;
-			int* gt_cpu = NULL ;  
-			lt_cpu = clEnqueueMapBuffer(que, lt, CL_TRUE,
-						CL_MAP_READ | CL_MAP_WRITE, 0, sizeof(cl_int)*(current_nwg),
-							0, NULL, &read_evt_lt, &err) ; 
-			ocl_check(err, "read buffer lt") ; 
-
-			gt_cpu = clEnqueueMapBuffer(que, gt, CL_TRUE,
-						CL_MAP_READ | CL_MAP_WRITE, 0, sizeof(cl_int)*(current_nwg),
-							0, NULL, &read_evt_gt, &err);
-			ocl_check(err, "read buffer gt");
-
-			scan(lt_cpu, current_nwg) ; 
-			scan(gt_cpu, current_nwg) ; 
-
-			cl_event unmap_evt_lt;
-			err = clEnqueueUnmapMemObject(que, lt, lt_cpu,
-						1, &read_evt_lt, &unmap_evt_lt);
-			ocl_check(err, "unmap lt");
-
-			cl_event unmap_evt_gt;
-			err = clEnqueueUnmapMemObject(que, gt, gt_cpu,
-						1, &read_evt_gt, &unmap_evt_gt);
-			ocl_check(err, "unmap gt"); 
-
-			cl_event scan_evt[3] ; 
-
-			scan_evt[0] = scan_seq(que, scan_gpu, bit_map_sup, bit_map_inf, tails_sup, tails_inf, current_nels, lws, current_nwg) ;
-			scan_evt[1] = scan_seq(que, scan_gpu, tails_sup, tails_inf, tails_sup, tails_inf, current_nwg, lws, 1) ;  
-			scan_evt[2] = scan_seq_update(que, scan_update, bit_map_sup, bit_map_inf, tails_sup, tails_inf, current_nels, lws, current_nwg - 1) ;  
-
-			clWaitForEvents(3, scan_evt) ; 
-
-			sequence curr_seq ; 
-			curr_seq.sstart = sstart ; 
-			curr_seq.send = send ; 
-			curr_seq.pivot_value = pivot ; 
-
-			cl_event partion_evt = partition(que, partitioning, d_buf[buf_index], d_buf[1-buf_index], bit_map_inf, bit_map_sup,  lt_cpu[current_nwg - 1], gt_cpu[current_nwg - 1], curr_seq, nels, lws, current_nwg) ; 
-
-			clWaitForEvents(1, &partion_evt) ;
-
-			out = NULL ; 
- 
-			out = clEnqueueMapBuffer(que, d_buf[1-buf_index], CL_TRUE,
-						CL_MAP_READ , sizeof(cl_int)*sstart, sizeof(cl_int)*current_nels,
-							0, NULL, &read_buf_out_evt , &err) ; 
-			ocl_check(err, "read buffer out") ;
-
-			int idx_pivot = 0; 
-			for(int j = 0; j < current_nels ; j++){
-				if(out[j] == pivot){
-					idx_pivot = j; 
-					break ; 
-				}
-			}
-
-			bool equal = true ; 
-			for(int j = 0 ; j <  current_nels ; j++){
-				if(out[j] != pivot){
-					equal = false ; 
-				}
-			}
-	
-			err = clEnqueueUnmapMemObject(que, d_buf[1-buf_index], out,
-						1, &read_buf_out_evt, &unmap_buf_out_evt);
-			ocl_check(err, "unmap buffer out");
-
-			if(equal) return pivot ; 
-
-			const int pivot_statistic = idx_pivot + 1 ;  
-
-			if(pivot_statistic == median){
-				pivot_found = true ; 
-			}
-			else if(median < pivot_statistic){
-				send = sstart + idx_pivot - 1 ; 
-			}
-			else{
-				sstart = sstart + idx_pivot + 1 ; 
-				median -= pivot_statistic ; 
-			}
-
-			buf_index = 1 - buf_index; 
-	}
-
-	return pivot ; 
-}
-
 void quickSortGpu(const int* vec,  const int nels, const int lws, const int nwg_cu, cl_resources* resources){
 
 	if(resources == NULL){
@@ -414,7 +255,7 @@ void quickSortGpu(const int* vec,  const int nels, const int lws, const int nwg_
     sequence start_sequence ; 
     start_sequence.sstart = 0 ; 
     start_sequence.send = nels - 1 ; 
-	start_sequence.pivot_value = vec[nels - 1] ; 
+	start_sequence.pivot_value = vec[rand()%nels] ; 
 	enqueue(&sequences_to_partion, &start_sequence) ;  
 
     while(!is_Empty(&sequences_to_partion)){ 
@@ -502,7 +343,7 @@ void quickSortGpu(const int* vec,  const int nels, const int lws, const int nwg_
 						0, NULL, &read_buf_out_evt , &err) ; 
 			ocl_check(err, "read buffer out") ;
 
-			s1.pivot_value  = out[s1_dim - 1] ; 
+			s1.pivot_value  = out[rand()%s1_dim] ; 
 
 			err = clEnqueueUnmapMemObject(resources->que, d_buf[0], out,
 					1, &read_buf_out_evt, &unmap_buf_out_evt);
@@ -538,7 +379,7 @@ void quickSortGpu(const int* vec,  const int nels, const int lws, const int nwg_
 						0, NULL, &read_buf_out_evt , &err) ; 
 			ocl_check(err, "read buffer out") ;
 
-			s2.pivot_value  = out[s2_dim - 1] ; 
+			s2.pivot_value  = out[rand()%s2_dim] ; 
 
 			err = clEnqueueUnmapMemObject(resources->que, d_buf[0], out,
 					1, &read_buf_out_evt, &unmap_buf_out_evt);
