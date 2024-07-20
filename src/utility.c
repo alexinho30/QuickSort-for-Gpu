@@ -2,15 +2,6 @@
 #include <stdbool.h>
 #include "../include/boiler.h"
 
-int log_b2(int val){
-    int cont = 0 ; 
-    while(val > 1){
-        val = val/2 ; 
-        cont++ ; 
-    }
-    return cont ; 
-}
-
 void handle_error(const char *err) {
 	perror(err) ; 
 	exit(EXIT_FAILURE);

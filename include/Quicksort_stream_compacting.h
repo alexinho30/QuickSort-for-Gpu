@@ -1,6 +1,11 @@
 #ifndef QUICKSORT_STREAM_COMPACTING_H
 #define QUICKSORT_STREAM_COMPACTING_H
 
+#include<math.h>
+#include <stdbool.h>
+#include "../include/quicksort_cpu_version.h"
+#define MAX_NUM_SEQ 300000
+#define TEST 1
 
 #include<stdio.h>
 #include<unistd.h>

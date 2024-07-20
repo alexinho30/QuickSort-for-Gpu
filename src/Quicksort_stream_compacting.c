@@ -1,9 +1,4 @@
 #include "../include/Quicksort_stream_compacting.h"
-#include<math.h>
-#include <stdbool.h>
-#include "../include/quicksort_cpu_version.h"
-#define MAX_NUM_SEQ 300000
-#define TEST 1
 
 cl_event split_elements(cl_command_queue q, cl_kernel splitting_elements,
 		cl_mem d_buf, cl_mem lt, cl_mem gt, cl_mem bit_map_sup, cl_mem bit_map_inf, cl_int nels, cl_int sstart, cl_int lws_, cl_int pivot, const int nwg){
@@ -235,21 +230,21 @@ void quickSortGpu(const int* vec,  const int nels, const int lws, const int nwg_
 	partitioning_copy = clCreateKernel(resources->prog, "partition_copy", &err);	
 	ocl_check(err, "create kernel partition_buff_tmp");
 
-	cl_mem in = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, (nels)*sizeof(cl_int), (void*)vec, &err); 
+	cl_mem in = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, (nels)*sizeof(cl_double), (void*)vec, &err); 
 	ocl_check(err, "create buffer d_buf");
-	cl_mem buff_tmp = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR , (nels)*sizeof(cl_int), NULL, &err);
+	cl_mem buff_tmp = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR , (nels)*sizeof(cl_double), NULL, &err);
 	ocl_check(err, "create buffer lt");
-	cl_mem lt = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR , (nwg)*sizeof(cl_int), NULL, &err);
+	cl_mem lt = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR , (nwg)*sizeof(cl_double), NULL, &err);
 	ocl_check(err, "create buffer lt");
-	cl_mem gt = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, (nwg)*sizeof(cl_int), NULL, &err);
+	cl_mem gt = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, (nwg)*sizeof(cl_double), NULL, &err);
 	ocl_check(err, "create buffer gt"); 
-	cl_mem bit_map_sup = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR , nels*sizeof(cl_int), NULL, &err);
+	cl_mem bit_map_sup = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR , nels*sizeof(cl_double), NULL, &err);
 	ocl_check(err, "create buffer bit map sup");
-	cl_mem bit_map_inf = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR , nels*sizeof(cl_int), NULL, &err);
+	cl_mem bit_map_inf = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR , nels*sizeof(cl_double), NULL, &err);
 	ocl_check(err, "create buffer bit map inf");
-	cl_mem tails_inf = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR , nwg*sizeof(cl_int), NULL, &err);
+	cl_mem tails_inf = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR , nwg*sizeof(cl_double), NULL, &err);
 	ocl_check(err, "create buffer bit map inf");
-	cl_mem tails_sup = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR , nwg*sizeof(cl_int), NULL, &err);
+	cl_mem tails_sup = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR , nwg*sizeof(cl_double), NULL, &err);
 	ocl_check(err, "create buffer bit map inf");
    
     Queue sequences_to_partion ;

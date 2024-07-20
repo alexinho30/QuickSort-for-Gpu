@@ -19,8 +19,6 @@ typedef struct{
     int current_nwg ; 
 }sequences_info ; 
 
-int log_b2(int val);
-
 void handle_error(const char *err) ;
 
 void scan(int* vec, const int nels) ;

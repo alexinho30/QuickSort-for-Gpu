@@ -1,10 +1,12 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<time.h>
+#include<math.h>
 
 #include "include/Quicksort_stream_compacting.h"
 #include "include/boiler.h"
 #include "include/quicksort_cpu_version.h"
+#include "include/random_numbers.h"
 
 int main(int argc, char **argv) {
 	if(argc != 4){
@@ -37,6 +39,12 @@ int main(int argc, char **argv) {
 
 	cl_resources resource ; 
 	create_resources(&resource, "quickSort.ocl") ; 
+
+	for(int i = 0 ; i < 100; i++){
+		printf("%d ", random_uniform_value(0, 100)) ; 
+	}
+	printf("\n") ;
+	printf("log :%d\n", log_b2(33)) ;  
 	quickSortGpu(vec, nels, lws, nwg_cu, &resource) ;
 
 	return 0 ;
