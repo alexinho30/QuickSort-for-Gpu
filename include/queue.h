@@ -7,7 +7,7 @@
 typedef struct{
 	int sstart ;
 	int send ;
-	int pivot_value ; 	
+	float pivot_value ; 	
 } sequence;
 
 typedef struct {

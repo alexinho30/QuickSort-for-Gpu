@@ -4,6 +4,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include<stdbool.h>
+#include<time.h>
+
+#include "../include/boiler.h"
 
 typedef struct{
     unsigned long split_elements_time ;
@@ -23,14 +26,16 @@ void handle_error(const char *err) ;
 
 void scan(int* vec, const int nels) ;
 
-void init_array(int* vec, const int nels) ; 
+void print_vec(const float*vec, const int sstart, const int send) ;
 
-void print_vec(const int*vec, const int sstart, const int send) ;
+void copy_vec(const float* vec, float* vec_copy, const int start, const int end) ; 
 
-void copy_vec(const int* vec, int* vec_copy, const int start, const int end) ; 
-
-void check_result(const int* vec, const int* vec_copy, const int nels) ; 
+void check_result(const float* vec, const float* vec_copy, const int nels) ; 
 
 void bench_mark(times* t, const int iteration, const sequences_info* s, const int lws ) ; 
+
+void write_array_on_file(float* vec, const int nels, const char* const file_name) ; 
+
+float* read_array_from_file(int* nels, const char* const file_name) ; 
 
 #endif

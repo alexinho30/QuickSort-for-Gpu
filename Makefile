@@ -1,6 +1,6 @@
 #definitions of flags
 CC=gcc
-LDLIBS=-lOpenCL
+LDLIBS=-lOpenCL -lm
 DEPFLAGS=-MP -MD
 CFLAGS=-Wall -g -I. -I./include/ $(DEPFLAGS)
 

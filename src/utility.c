@@ -1,18 +1,8 @@
 #include "../include/utility.h"
-#include <stdbool.h>
-#include "../include/boiler.h"
 
 void handle_error(const char *err) {
 	perror(err) ; 
 	exit(EXIT_FAILURE);
-}
-
-void init_array(int *vec, const int nels){
-	srand(21);
-
-	for (int i = 0; i < nels; i++){
-		vec[i] = rand()%1000000000;
-	}
 }
 
 void scan(int* vec, const int nels){
@@ -21,23 +11,23 @@ void scan(int* vec, const int nels){
 	}
 }
 
-void print_vec(const int*vec, const int sstart, const int send){
+void print_vec(const float* vec, const int sstart, const int send){
 	for(int i = sstart ; i <=send ; i++){
-		printf("%d ", vec[i]) ; 
+		printf("%f ", vec[i]) ; 
 	}
 	printf("\n") ; 
 }
 
-void copy_vec(const int* vec, int* vec_copy, const int start, const int end){
+void copy_vec(const float* vec, float* vec_copy, const int start, const int end){
 	for(int i = start ; i <= end ; i++){
 		vec_copy[i] = vec[i] ; 
 	}
 }
 
-void check_result(const int* vec, const int* vec_copy, const int nels){
+void check_result(const float* vec, const float* vec_copy, const int nels){
 	for(int i = 0 ; i < nels ; i++){
 		if(vec[i] != vec_copy[i]){
-			fprintf(stderr, "error vec[%d] = %d different from expected[%d] = %d\n", i, vec[i], i, vec_copy[i]) ;
+			fprintf(stderr, "error vec[%d] = %f different from expected[%d] = %f\n", i, vec[i], i, vec_copy[i]) ;
 			exit(EXIT_FAILURE) ;   
 		}
 	}
@@ -49,7 +39,7 @@ void bench_mark(times* t, const int num_iteration, const sequences_info* s, cons
 	time(&current_time) ; 
 	struct tm* time_info = localtime(&current_time) ; 
 	char file_name[BUFSIZE] ; 
-	snprintf(file_name, BUFSIZE, "benchMarking%s.txt", asctime(time_info)) ; 
+	snprintf(file_name, BUFSIZE, "test/benchMarking%s.txt", asctime(time_info)) ; 
 
 	FILE*f = fopen(file_name, "a+") ; 
 
@@ -90,4 +80,43 @@ void bench_mark(times* t, const int num_iteration, const sequences_info* s, cons
 		handle_error("error on closing benchmarking file\n") ; 
 	}
 
+}
+
+float* read_array_from_file(int* nels, const char* const file_name){
+	FILE*f = fopen(file_name, "r") ;
+
+	if(!f){
+		handle_error("opening file\n") ; 
+	}
+
+	int ret = 0 ; 
+	fscanf(f, "%d", nels) ; 
+	float* vec = calloc(*nels, sizeof(float)) ; 
+
+	for(int i = 0 ; i < *nels && ret != EOF ; i++){
+		ret = fscanf(f, "%f", &vec[i]) ; 
+	}
+
+	if(fclose(f) < 0){
+		handle_error("closing file\n") ; 
+	} 
+
+	return vec ; 
+}
+
+void write_array_on_file(float* vec, const int nels, const char* const file_name){ 
+
+	FILE* f = fopen(file_name, "a+")  ;
+
+	if(!f){
+		handle_error("opening file\n") ; 
+	}
+
+	for(int i = 0 ; i < nels ; i++){ 
+		fprintf(f, "%f ", vec[i]) ; 
+	}
+
+	if(fclose(f) < 0){
+		handle_error("closing file\n") ; 
+	}
 }

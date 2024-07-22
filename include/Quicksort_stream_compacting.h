@@ -13,6 +13,6 @@
 #include "queue.h"
 #include "utility.h"
 
-void quickSortGpu(const int* vec, const int nels, const int lws, const int nwg_cu, cl_resources* resources) ; 
+float* quickSortGpu(const float* vec, const int nels, const int lws, const int nwg_cu, cl_resources* resources, bool test_mode) ; 
 
 #endif 

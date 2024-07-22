@@ -1,7 +1,7 @@
 #include "../include/quicksort_cpu_version.h"
 #include<stdio.h>
 
-void quicksort(int* vec, const int start, const int end){
+void quicksort(float* vec, const int start, const int end){
     if(start >= end){
         return ; 
     }
@@ -11,14 +11,14 @@ void quicksort(int* vec, const int start, const int end){
     quicksort(vec, p, end) ;  
 }
 
-void swap(int* a, int* b){
-    int tmp = *a ;  
+void swap(float* a, float* b){
+    float tmp = *a ;  
     *a = *b ; 
     *b = tmp ; 
 }
 
-int partion(int*vec, const int start, const int end){
-    const int pivot = vec[end] ; 
+int partion(float *vec, const int start, const int end){
+    const float pivot = vec[end] ; 
 
     int j = start - 1 ; 
 
