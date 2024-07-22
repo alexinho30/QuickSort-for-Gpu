@@ -5,7 +5,7 @@ void quicksort(float* vec, const int start, const int end) ;
 
 void swap(float* a, float* b) ; 
 
-int partion(float*vec, const int start, const int end) ; 
+float partion(float*vec, const int start, const int end, int* lt, int* gt) ; 
 
 
 #endif

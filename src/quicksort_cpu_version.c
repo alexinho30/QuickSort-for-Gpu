@@ -6,9 +6,12 @@ void quicksort(float* vec, const int start, const int end){
         return ; 
     }
 
-    int p = partion(vec, start, end) ; 
-    quicksort(vec, start, p - 1) ;
-    quicksort(vec, p, end) ;  
+    int lt = start, gt = end ; 
+
+    float pivot = partion(vec, start, end, &lt, &gt) ; 
+    
+    quicksort(vec, start, lt - 1) ;
+    quicksort(vec, gt + 1, end) ;  
 }
 
 void swap(float* a, float* b){
@@ -17,18 +20,22 @@ void swap(float* a, float* b){
     *b = tmp ; 
 }
 
-int partion(float *vec, const int start, const int end){
-    const float pivot = vec[end] ; 
+float partion(float *vec, const int start, const int end, int* lt, int* gt){
+    const float pivot = vec[start] ; 
+    int i = start + 1;
 
-    int j = start - 1 ; 
-
-    for(int i = start ; i < end ; i++){
-        if(vec[i] <= pivot){
-            swap(&vec[++j], &vec[i]) ;  
+    while(i <= *gt){
+        if(vec[i] < pivot){
+            swap(&vec[(*lt)++], &vec[i]) ; 
+            i++ ; 
+        }
+        else if(vec[i] > pivot){
+            swap(&vec[(*gt)--], &vec[i]) ; 
+        }
+        else{
+            i++ ; 
         }
     }
-
-    swap(&vec[++j], &vec[end]) ; 
-
-    return j ; 
+    
+    return pivot ; 
 }
