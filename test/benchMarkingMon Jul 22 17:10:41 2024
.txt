@@ -1,8 +1,0 @@
---------
-current_nels : 128 current_nwg : 1  iteration : 0
-split elements evt : 11875 ns	 0.03242 GE/s	 0.1297 GB/s
-partial scan evt : 28229 ns	 0.01817 GE/s	 0.07269 GB/s
-scan tails evt : 13593 ns	 0.0002943 GE/s	 0.001177 GB/s
-scan update evt : 9010 ns	 -0.08524 GE/s	 2.047e+15 GB/s
-partition evt : 6927 ns	 0.03696 GE/s	 0.1478 GB/s
-partition copy evt : 3802 ns	 0.06733 GE/s	 0.2693 GB/s
