@@ -185,6 +185,146 @@ cl_event partition_copy(cl_command_queue que, kernels* k, device_memeory* m,  in
 
 }
 
+int median_computation(cl_command_queue que, kernels* k, device_memeory*m, int sstart, int send, 
+	int lws, const int nwg){
+
+	bool pivot_found = false ; 
+	float pivot ;
+
+	cl_int err ; 
+
+
+	int median  = 0; 
+	if((send - sstart + 1 ) & 1){
+		median = (send - sstart + 1)/2 ; 
+	}
+	else{
+		median = (send - sstart + 1)/2 - 1; 
+	}
+
+	while(!pivot_found){
+
+		const int current_nels = send - sstart + 1 ; 
+		int current_nwg = nwg ;
+
+		if(current_nels <= lws){
+			cl_event read_seq_evt ; 
+			cl_event unmap_seq_evt ; 
+			float* seq = NULL; 	
+
+			seq = clEnqueueMapBuffer(que, m->in, CL_TRUE,
+						CL_MAP_READ , sstart*sizeof(cl_float), sizeof(cl_float)*(current_nels),
+							0, NULL, &read_seq_evt , &err) ; 
+			ocl_check(err, "read seq") ;
+
+			quicksort(seq, 0, current_nels - 1) ; 
+
+			err = clEnqueueUnmapMemObject(que, m->in, seq,
+						1, &read_seq_evt, &unmap_seq_evt);
+			ocl_check(err, "unmap seq");
+
+			return seq[median - 1] ;
+		}
+
+		const int pivot_pos = rand()%(send - sstart) + sstart ; 
+
+		float* pivot_value = NULL ;
+		cl_event read_pivot_evt ;
+		cl_event unmap_pivot_evt;
+
+		pivot_value = clEnqueueMapBuffer(que, m->in, CL_TRUE,
+						CL_MAP_READ, pivot_pos*sizeof(cl_float), sizeof(cl_float),
+							0, NULL, &read_pivot_evt, &err) ; 
+		ocl_check(err, "read pivot") ;
+
+		pivot = *pivot_value ; 
+		
+		err = clEnqueueUnmapMemObject(que, m->in, pivot_value,
+						1, &read_pivot_evt, &unmap_pivot_evt);
+		ocl_check(err, "unmap pivot");
+
+		while(current_nwg*lws > current_nels){
+			current_nwg/=2 ; 
+		} 
+
+		cl_event evt_split_elements = split_elements(que, k, m, current_nels, sstart, lws, pivot, current_nwg) ;  
+	
+		clWaitForEvents(1, &evt_split_elements) ;
+
+		cl_event read_evt_lt ;
+		cl_event read_evt_gt ; 
+	
+			int* lt_cpu = NULL ;
+			int* gt_cpu = NULL ;  
+			lt_cpu = clEnqueueMapBuffer(que, m->lt, CL_TRUE,
+						CL_MAP_READ | CL_MAP_WRITE, 0, sizeof(cl_int)*(current_nwg),
+							0, NULL, &read_evt_lt, &err) ; 
+			ocl_check(err, "read buffer lt") ; 
+
+			gt_cpu = clEnqueueMapBuffer(que, m->gt, CL_TRUE,
+						CL_MAP_READ | CL_MAP_WRITE, 0, sizeof(cl_int)*(current_nwg),
+							0, NULL, &read_evt_gt, &err);
+			ocl_check(err, "read buffer gt");
+
+			scan(lt_cpu, current_nwg) ; 
+			scan(gt_cpu, current_nwg) ; 
+
+			const int sum_lt = lt_cpu[current_nwg - 1] ; 
+			const int sum_gt = gt_cpu[current_nwg - 1] ; 
+
+			cl_event unmap_evt_lt;
+			err = clEnqueueUnmapMemObject(que, m->lt, lt_cpu,
+						1, &read_evt_lt, &unmap_evt_lt);
+			ocl_check(err, "unmap lt");
+
+			cl_event unmap_evt_gt;
+			err = clEnqueueUnmapMemObject(que, m->gt, gt_cpu,
+						1, &read_evt_gt, &unmap_evt_gt);
+			ocl_check(err, "unmap gt"); 
+
+			cl_event scan_evt[3] ; 
+			
+			scan_evt[0] = scan_seq(que, k, m,  m->bit_map_sup, m->bit_map_inf, current_nels, lws, current_nwg) ;
+			scan_evt[1] = scan_seq(que, k, m, m->tails_sup, m->tails_inf, current_nwg, lws, 1) ;  
+			scan_evt[2] = scan_seq_update(que, k, m, current_nels, lws, current_nwg - 1) ;  
+
+			clWaitForEvents(3, scan_evt) ; 
+
+			sequence curr_seq ; 
+			curr_seq.sstart = sstart ; 
+			curr_seq.send = send ; 
+			curr_seq.pivot_value = pivot ; 
+
+			cl_event partition_evt = partition(que, k,  m, lt_cpu[current_nwg - 1], gt_cpu[current_nwg -1], curr_seq, current_nels, lws, current_nwg) ; 
+			clWaitForEvents(1, &partition_evt) ;
+			cl_event partition_copy_evt = partition_copy(que, k, m, lt_cpu[current_nwg - 1], gt_cpu[current_nwg -1], curr_seq, current_nels, lws, current_nwg) ;
+			clWaitForEvents(1, &partition_copy_evt) ; 
+			
+			for(int idx_pivot = curr_seq.sstart + sum_lt ; idx_pivot < curr_seq.send - sum_gt ; idx_pivot++){
+				const int pivot_statistic = idx_pivot + 1 ;  
+
+				if(pivot_statistic == median){
+					pivot_found = true ; 
+					break ; 
+				}
+			}
+			if(pivot_found == true){
+				break ;
+			}
+			else{
+			    if(median < curr_seq.sstart + sum_lt + 1){
+					send = sstart + sum_lt - 1 ; 
+				}
+				else{
+					sstart+=sum_lt + 1 ; 
+				} 
+			}
+	}
+
+	return pivot ; 
+}
+
+
 float* quickSortGpu(const float* vec,  const int nels, const int lws, const int nwg, cl_resources* resources, bool test_correctness){
 
 	if(resources == NULL){
@@ -238,8 +378,8 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 
     sequence start_sequence ; 
     start_sequence.sstart = 0 ; 
-    start_sequence.send = nels - 1 ; 
-	start_sequence.pivot_value = vec[rand()%nels] ; 
+    start_sequence.send = nels - 1 ;  
+	start_sequence.pivot_value = median_computation(resources->que, &k, &m, start_sequence.sstart, start_sequence.send, lws, nwg) ; 
 	enqueue(&sequences_to_partion, &start_sequence) ;  
 
 	int iteration = 0; 
@@ -325,20 +465,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		const int s2_dim = s2.send - s2.sstart + 1 ;
 
 		if((s1_dim > 2*lws)){
-			cl_event read_s1_evt ; 
-			cl_event unmap_s1_evt ; 
-			float* s1_arr = NULL;
-
-			s1_arr = clEnqueueMapBuffer(resources->que, m.in, CL_TRUE,
-					CL_MAP_READ | CL_MAP_WRITE, sizeof(cl_float)*s1.sstart, sizeof(cl_float)*s1_dim,
-						0, NULL, &read_s1_evt , &err) ; 
-			ocl_check(err, "read buffer out") ;
-
-			s1.pivot_value = (float)s1_arr[rand()%s1_dim] ; 
-
-			err = clEnqueueUnmapMemObject(resources->que, m.in, s1_arr,
-					1, &read_s1_evt, &unmap_s1_evt);
-			ocl_check(err, "unmap buffer out");
+			s1.pivot_value = median_computation(resources->que, &k, &m, s1.sstart, s1.send, lws, nwg) ; 
 
 			enqueue(&sequences_to_partion, &s1) ; 
 		}
@@ -361,20 +488,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 
 		if((s2_dim > 2*lws)){
 
-			cl_event read_s2_evt ; 
-			cl_event unmap_s2_evt ; 
-			float* s2_arr = NULL;
-
-			s2_arr = clEnqueueMapBuffer(resources->que, m.in, CL_TRUE,
-					CL_MAP_READ | CL_MAP_WRITE, sizeof(cl_float)*s2.sstart, sizeof(cl_float)*s2_dim,
-						0, NULL, &read_s2_evt , &err) ; 
-			ocl_check(err, "read buffer out") ;
-
-			s2.pivot_value  = (float)s2_arr[rand()%s2_dim] ;
-
-			err = clEnqueueUnmapMemObject(resources->que, m.in, s2_arr,
-					1, &read_s2_evt, &unmap_s2_evt);
-			ocl_check(err, "unmap buffer out") ; 
+			s2.pivot_value = median_computation(resources->que, &k, &m, s2.sstart, s2.send, lws, nwg) ; 
  
 			enqueue(&sequences_to_partion, &s2) ;
 		}
