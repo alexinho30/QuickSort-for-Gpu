@@ -56,7 +56,7 @@ local int * restrict arr_inf, local int* restrict arr_sup
 
     if(li == 0){
         lt[gi] = v_inf ; 
-        gt[gi] = v_sup ;
+        gt[gi] = v_sup ; 
     }
 }
 
@@ -190,16 +190,16 @@ global const int* restrict bit_map_sup, global const int* restrict bit_map_inf, 
    int i = get_global_id(0) ; 
 
     while(i < nels){
-        const float v = in[i + seq.sstart] ; 
+        const float v = in[i + seq.sstart] ;
 
         if(v < seq.pivot_value){
             const int idx_out = seq.sstart + bit_map_inf[i] ; 
-            out[idx_out] =  v ;
+            out[idx_out] =  v ; 
         }
 
         if(v > seq.pivot_value){
             const int idx_out = bit_map_sup[i]  + seq.send - gt + 1 ; 
-            out[idx_out] = v ;  
+            out[idx_out] = v ;   
         }
 
         i+=get_global_size(0) ; 

@@ -41,8 +41,7 @@ int main(int argc, char *argv[])
 //#define CL_TARGET_OPENCL_VERSION 120
 
 
-typedef struct
-{
+typedef struct{
 	cl_platform_id p;
 	cl_device_id d;
 	cl_context ctx;
