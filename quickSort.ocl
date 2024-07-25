@@ -1,9 +1,3 @@
-typedef struct __attribute__ ((packed)) {
-	int sstart ;
-	int send ;
-	float pivot_value ; 	
-} sequence;
-
 kernel void split_elements(const int nels, const int sstart, global const float4 * restrict in,  
 const float pivot, global int * restrict lt, global int * restrict gt,  
 global int* bit_array_sup, global int* bit_array_inf,
@@ -188,7 +182,7 @@ global int* restrict tails_sup, global int* restrict tails_inf){
     } 
 }
 
-kernel void partition(const int nels, const sequence seq, global const float* restrict in, global float* restrict out, 
+/*kernel void partition(const int nels, const sequence seq, global const float* restrict in, global float* restrict out, 
 global const int* restrict bit_map_sup, global const int* restrict bit_map_inf, const int lt, const int gt){
 
     int i = get_global_id(0) ; 
@@ -222,22 +216,24 @@ global const int* restrict bit_map_sup, global const int* restrict bit_map_inf, 
         }
     }
 }
+*/
 
-kernel void partition_buff_tmp(const int nels, const sequence seq, global float* restrict in, global float* restrict out, 
+kernel void partition_buff_tmp(const int nels, const int sstart, const float pivot_value, global float* restrict in, global float* restrict out, 
 global const int* restrict bit_map_sup, global const int* restrict bit_map_inf, const int lt, const int gt){
 
-   int i = get_global_id(0) ; 
+   int i = get_global_id(0) ;
+   const int send = nels + sstart - 1 ; 
 
     while(i < nels){
-        const float v = in[i + seq.sstart] ;
+        const float v = in[i + sstart] ;
 
-        if(v < seq.pivot_value){
-            const int idx_out = seq.sstart + bit_map_inf[i] ; 
+        if(v < pivot_value){
+            const int idx_out = sstart + bit_map_inf[i] ; 
             out[idx_out] =  v ; 
         }
 
-        if(v > seq.pivot_value){
-            const int idx_out = bit_map_sup[i]  + seq.send - gt + 1 ; 
+        if(v > pivot_value){
+            const int idx_out = bit_map_sup[i]  + send - gt + 1 ; 
             out[idx_out] = v ;   
         }
 
@@ -245,30 +241,29 @@ global const int* restrict bit_map_sup, global const int* restrict bit_map_inf, 
     }
 
     if(get_group_id(0) == 0 && get_local_id(0) == 0){
-        for(int j = seq.sstart + lt ; j < seq.send - gt + 1; j++){
-            out[j]= seq.pivot_value ; 
+        for(int j = sstart + lt ; j < send - gt + 1; j++){
+            out[j]= pivot_value ; 
         }
     }   
 }
 
-kernel void partition_copy(const int nels, const sequence seq, global float* restrict in, global float4* restrict out, 
+kernel void partition_copy(const int nels, const int sstart, global float* restrict in, global float4* restrict out, 
                             const int lt, const int gt){
 
     int i =  get_global_id(0) ; 
 
-    const int send = nels + seq.sstart - 1; 
-    const int left_offset = seq.sstart%4 ;
-    const int right_offset = ((seq.send + 3)/4)*4 - (seq.send - 1);   
+    const int send = nels + sstart - 1; 
+    const int left_offset = sstart%4 ;
+    const int right_offset = ((send + 3)/4)*4 - (send - 1);   
     int nquarts  = (nels + right_offset + left_offset + 3)/4 ;
 
     while(i < nquarts){
-        float4 v = out[i + seq.sstart/4] ;
+        float4 v = out[i + sstart/4] ;
         float s[4] = {v.s0, v.s1, v.s2, v.s3} ; 
-        
         for(int t = 0 ; t < 4 ; t++){
             const int idx = i*4 + t - left_offset;
             if(idx < nels  && idx >= 0)  
-            in[idx + seq.sstart] = s[t] ;
+            in[idx + sstart] = s[t] ;
         } 
         i+=get_global_size(0) ; 
     }  

@@ -124,25 +124,28 @@ cl_event partition(cl_command_queue q, kernels* k, device_memeory* m, cl_int lt,
 	err = clSetKernelArg(k->partitioning, 0, sizeof(cl_int), &nels) ;
 	ocl_check(err, "set kernel nels ") ;
 
-	err = clSetKernelArg(k->partitioning, 1, sizeof(sequence), &seq) ;
+	err = clSetKernelArg(k->partitioning, 1, sizeof(cl_int), &seq.sstart) ;
 	ocl_check(err, "set kernel seq ") ;
 
-	err = clSetKernelArg(k->partitioning, 2, sizeof(m->in), &m->in) ;
+	err = clSetKernelArg(k->partitioning, 2, sizeof(cl_float), &seq.pivot_value) ;
+	ocl_check(err, "set kernel seq ") ;
+
+	err = clSetKernelArg(k->partitioning, 3, sizeof(m->in), &m->in) ;
 	ocl_check(err, "set kernel in") ;
 
-	err = clSetKernelArg(k->partitioning, 3, sizeof(m->buff_tmp), &m->buff_tmp) ;
+	err = clSetKernelArg(k->partitioning, 4, sizeof(m->buff_tmp), &m->buff_tmp) ;
 	ocl_check(err, "set kernel out") ;
 
-	err = clSetKernelArg(k->partitioning, 4, sizeof(m->bit_map_sup), &m->bit_map_sup) ;
+	err = clSetKernelArg(k->partitioning, 5, sizeof(m->bit_map_sup), &m->bit_map_sup) ;
 	ocl_check(err, "set kernel bit_map_sup") ;
 
-	err = clSetKernelArg(k->partitioning, 5, sizeof(m->bit_map_inf), &m->bit_map_inf) ;
+	err = clSetKernelArg(k->partitioning, 6, sizeof(m->bit_map_inf), &m->bit_map_inf) ;
 	ocl_check(err, "set kernel bit_map_inf") ;
 
-	err = clSetKernelArg(k->partitioning, 6, sizeof(cl_int), &lt) ;
+	err = clSetKernelArg(k->partitioning, 7, sizeof(cl_int), &lt) ;
 	ocl_check(err, "set kernel lt") ;
 
-	err = clSetKernelArg(k->partitioning, 7, sizeof(cl_int), &gt) ;
+	err = clSetKernelArg(k->partitioning, 8, sizeof(cl_int), &gt) ;
 	ocl_check(err, "set kernel gt") ;
 
 	err = clEnqueueNDRangeKernel(q,  k->partitioning, 1, NULL, gws, lws, 0, NULL, &partition_evt) ;
@@ -152,7 +155,7 @@ cl_event partition(cl_command_queue q, kernels* k, device_memeory* m, cl_int lt,
 }
 
 cl_event partition_copy(cl_command_queue que, kernels* k, device_memeory* m,  int lt, 
-	const int gt, const sequence seq, const int nels, const int lws_, const int nwg){
+	const int gt, const int sstart, const int nels, const int lws_, const int nwg){
 
 	cl_int err ; 
 	cl_event partition_evt ; 
@@ -163,7 +166,7 @@ cl_event partition_copy(cl_command_queue que, kernels* k, device_memeory* m,  in
 	err = clSetKernelArg(k->partitioning_copy, 0, sizeof(cl_int), &nels) ;
 	ocl_check(err, "set kernel nels ") ;
 
-	err = clSetKernelArg(k->partitioning_copy, 1, sizeof(sequence), &seq) ;
+	err = clSetKernelArg(k->partitioning_copy, 1, sizeof(cl_int), &sstart) ;
 	ocl_check(err, "set kernel seq ") ;
 
 	err = clSetKernelArg(k->partitioning_copy, 2, sizeof(m->in), &m->in) ;
@@ -309,7 +312,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		cl_event partition_evt = partition(resources->que, &k,  &m, lt_cpu[current_nwg - 1], gt_cpu[current_nwg -1], curr_seq, current_nels, lws, current_nwg) ; 
 		clWaitForEvents(1, &partition_evt) ;
 
-		cl_event partition_copy_evt = partition_copy(resources->que, &k, &m, lt_cpu[current_nwg - 1], gt_cpu[current_nwg -1], curr_seq, current_nels, lws, current_nwg) ;
+		cl_event partition_copy_evt = partition_copy(resources->que, &k, &m, lt_cpu[current_nwg - 1], gt_cpu[current_nwg -1], curr_seq.sstart, current_nels, lws, current_nwg) ;
 		clWaitForEvents(1, &partition_copy_evt) ; 
 
 		sequence s1, s2 ; 
