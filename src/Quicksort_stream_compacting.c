@@ -243,12 +243,14 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 	enqueue(&sequences_to_partion, &start_sequence) ;  
 
 	int iteration = 0; 
+	const int nquarts = nels/4 ; 
 
     while(!is_Empty(&sequences_to_partion)){ 
 
 		sequence curr_seq = dequeue(&sequences_to_partion) ; 
 		const int current_nels = curr_seq.send - curr_seq.sstart + 1 ;
 		int current_nwg = nwg ;
+		const int current_nquarts = current_nels/4 ; 
 
 		while(current_nwg*lws > current_nels){
 			current_nwg /= 2 ; 
@@ -256,7 +258,27 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 
 		if(!current_nwg) current_nwg++ ; 
 
-        cl_event evt_split_elements = split_elements(resources->que, &k, &m, current_nels, curr_seq.sstart, lws, curr_seq.pivot_value, current_nwg) ;  
+		//printf("nwg : %d \n", current_nwg) ; 
+
+		cl_event read_s1_evt ; 
+		cl_event unmap_s1_evt ; 
+		float* s1_arr = NULL;
+
+		/*printf("curr_sstart : %d curr_send : %d curr_pivot : %f \n", curr_seq.sstart, curr_seq.send, curr_seq.pivot_value) ; 
+
+		s1_arr = clEnqueueMapBuffer(resources->que, m.in, CL_TRUE,
+				CL_MAP_READ | CL_MAP_WRITE, sizeof(cl_float)*curr_seq.sstart, sizeof(cl_float)*current_nels,
+					0, NULL, &read_s1_evt , &err) ; 
+		ocl_check(err, "read buffer out") ;
+
+		print_vec(s1_arr, 0, current_nels -1) ; 
+
+		err = clEnqueueUnmapMemObject(resources->que, m.in, s1_arr,
+				1, &read_s1_evt, &unmap_s1_evt);
+		ocl_check(err, "unmap buffer out");*/
+
+
+        cl_event evt_split_elements = split_elements(resources->que, &k, &m, current_nels, curr_seq.sstart, lws, curr_seq.pivot_value, current_nwg) ; 
 
 		clWaitForEvents(1, &evt_split_elements) ;
 
@@ -277,7 +299,12 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		ocl_check(err, "read buffer gt");
 
 		scan(lt_cpu, current_nwg) ; 
-		scan(gt_cpu, current_nwg) ; 
+		scan(gt_cpu, current_nwg) ;
+		/*printf("lt :") ;  
+		for(int i = 0 ; i < current_nwg ; i++) printf("%d ", lt_cpu[i]) ; 
+		printf("\ngt:") ;
+		for(int i = 0 ; i < current_nwg ; i++) printf("%d ", gt_cpu[i]) ; 
+		printf("\n") ; */ 
 
 		const int sum_lt = lt_cpu[current_nwg - 1] ;
 		const int sum_gt = gt_cpu[current_nwg - 1] ; 
@@ -292,16 +319,87 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 					1, &read_evt_gt, &unmap_evt_gt);
 		ocl_check(err, "unmap gt");
 
+
+	    /*int* bit_map_sup_cpu = NULL ;
+		int* bit_map_inf_cpu = NULL ;
+		cl_event read_evt_bit_sup ; 
+		cl_event read_evt_bit_inf ;   
+
+		bit_map_sup_cpu = clEnqueueMapBuffer(resources->que, m.bit_map_sup, CL_TRUE,
+					CL_MAP_READ | CL_MAP_WRITE, 0, sizeof(cl_int)*current_nels,
+						0, NULL, &read_evt_bit_sup , &err) ; 
+		ocl_check(err, "read buffer lt") ; 
+
+		bit_map_inf_cpu = clEnqueueMapBuffer(resources->que, m.bit_map_inf, CL_TRUE,
+					CL_MAP_READ | CL_MAP_WRITE, 0, sizeof(cl_int)*current_nels,
+						0, NULL, &read_evt_bit_inf, &err);
+		ocl_check(err, "read buffer gt");
+
+		printf("bit map sup : ") ;
+		for(int j = 0 ; j < current_nels ; j++) printf("%d ", bit_map_sup_cpu[j]) ; 
+		printf("\n bit map inf : ") ;
+		for(int j = 0 ; j < current_nels ; j++) printf("%d ", bit_map_inf_cpu[j]) ; 
+		printf("\n") ; 
+
+		cl_event unmap_evt_bit_sup;
+		err = clEnqueueUnmapMemObject(resources->que, m.bit_map_sup, bit_map_sup_cpu,
+					1, &read_evt_bit_sup, &unmap_evt_bit_sup);
+		ocl_check(err, "unmap bit sup");
+
+		cl_event unmap_evt_bit_inf;
+		err = clEnqueueUnmapMemObject(resources->que, m.bit_map_inf, bit_map_inf_cpu,
+					1, &read_evt_bit_inf, &unmap_evt_bit_inf);
+		ocl_check(err, "unmap bit inf");*/
+
 		cl_event scan_evt[3] ; 
 
-		scan_evt[0] = scan_seq(resources->que, &k, &m,  m.bit_map_sup, m.bit_map_inf, current_nels, lws, current_nwg) ;
-		scan_evt[1] = scan_seq(resources->que, &k, &m, m.tails_sup, m.tails_inf, current_nwg, lws, 1) ;  
-		scan_evt[2] = scan_seq_update(resources->que, &k, &m, current_nels, lws, current_nwg - 1) ;  
+		scan_evt[0] = scan_seq(resources->que, &k, &m,  m.bit_map_sup, m.bit_map_inf, round_mul_up(current_nels, 4), lws, current_nwg) ;
+		scan_evt[1] = scan_seq(resources->que, &k, &m, m.tails_sup, m.tails_inf, round_mul_up(current_nwg, 4), lws, 1) ;
+		scan_evt[2] = scan_seq_update(resources->que, &k, &m, round_mul_up(current_nels, 4), lws, current_nwg - 1) ;
+
+		/*bit_map_sup_cpu = clEnqueueMapBuffer(resources->que, m.bit_map_sup, CL_TRUE,
+					CL_MAP_READ | CL_MAP_WRITE, 0, sizeof(cl_int)*current_nels,
+						0, NULL, &read_evt_bit_sup , &err) ; 
+		ocl_check(err, "read buffer lt") ; 
+
+		bit_map_inf_cpu = clEnqueueMapBuffer(resources->que, m.bit_map_inf, CL_TRUE,
+					CL_MAP_READ | CL_MAP_WRITE, 0, sizeof(cl_int)*current_nels,
+						0, NULL, &read_evt_bit_inf, &err);
+		ocl_check(err, "read buffer gt");
+
+		printf("bit map sup : ") ;
+		for(int j = 0 ; j < current_nels ; j++) printf("%d ", bit_map_sup_cpu[j]) ; 
+		printf("\n bit map inf : ") ;
+		for(int j = 0 ; j < current_nels ; j++) printf("%d ", bit_map_inf_cpu[j]) ; 
+		printf("\n") ; 
+
+		err = clEnqueueUnmapMemObject(resources->que, m.bit_map_sup, bit_map_sup_cpu,
+					1, &read_evt_bit_sup, &unmap_evt_bit_sup);
+		ocl_check(err, "unmap bit sup");
+
+		err = clEnqueueUnmapMemObject(resources->que, m.bit_map_inf, bit_map_inf_cpu,
+					1, &read_evt_bit_inf, &unmap_evt_bit_inf);
+		ocl_check(err, "unmap bit inf");  */
 
 		clWaitForEvents(3, scan_evt) ; 
 
 		cl_event partition_evt = partition(resources->que, &k,  &m, lt_cpu[current_nwg - 1], gt_cpu[current_nwg -1], curr_seq, current_nels, lws, current_nwg) ; 
 		clWaitForEvents(1, &partition_evt) ;
+
+		cl_event read_buf_out_evt ; 
+		cl_event unmap_buf_out_evt; 
+		float* out = clEnqueueMapBuffer(resources->que, m.buff_tmp, CL_TRUE,
+						CL_MAP_READ , sizeof(cl_float)*curr_seq.sstart, sizeof(cl_float)*current_nels,
+							0, NULL, &read_buf_out_evt , &err) ; 
+			ocl_check(err, "read buffer out") ;
+
+		//printf("tmp buf :\n") ; 
+		//print_vec(out, 0, current_nels -1) ; 
+	
+		err = clEnqueueUnmapMemObject(resources->que,m.buff_tmp, out,
+						1, &read_buf_out_evt, &unmap_buf_out_evt);
+		ocl_check(err, "unmap buffer out");
+
 		cl_event partition_copy_evt = partition_copy(resources->que, &k, &m, lt_cpu[current_nwg - 1], gt_cpu[current_nwg -1], curr_seq, current_nels, lws, current_nwg) ;
 		clWaitForEvents(1, &partition_copy_evt) ; 
 
@@ -324,6 +422,21 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		const int s1_dim = s1.send - s1.sstart + 1 ; 
 		const int s2_dim = s2.send - s2.sstart + 1 ;
 
+		//printf("lt : %d gt :%d \n", sum_lt, sum_gt) ; 
+
+		//printf("part_sstart : %d part_send : %d part_pivot : %f \n", curr_seq.sstart, curr_seq.send, curr_seq.pivot_value) ; 
+
+		/*s1_arr = clEnqueueMapBuffer(resources->que, m.in, CL_TRUE,
+				CL_MAP_READ | CL_MAP_WRITE, sizeof(cl_float)*curr_seq.sstart, sizeof(cl_float)*current_nels,
+					0, NULL, &read_s1_evt , &err) ; 
+		ocl_check(err, "read buffer out") ;
+
+		print_vec(s1_arr, 0, current_nels -1) ; 
+
+		err = clEnqueueUnmapMemObject(resources->que, m.in, s1_arr,
+				1, &read_s1_evt, &unmap_s1_evt);
+		ocl_check(err, "unmap buffer out");*/
+
 		if((s1_dim > 2*lws)){
 			cl_event read_s1_evt ; 
 			cl_event unmap_s1_evt ; 
@@ -335,6 +448,8 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 			ocl_check(err, "read buffer out") ;
 
 			s1.pivot_value = (float)s1_arr[rand()%s1_dim] ; 
+			//printf("s1.sstart :%d s1.send :%d  s1_dim : %d\n", s1.sstart, s1.send, s1_dim) ; 
+			//print_vec(s1_arr, 0, s1_dim - 1) ; 
 
 			err = clEnqueueUnmapMemObject(resources->que, m.in, s1_arr,
 					1, &read_s1_evt, &unmap_s1_evt);
@@ -371,6 +486,8 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 			ocl_check(err, "read buffer out") ;
 
 			s2.pivot_value  = (float)s2_arr[rand()%s2_dim] ;
+		//	printf("s2.sstart :%d s2.send :%d s2_dim: %d\n", s2.sstart, s2.send, s2_dim) ; 
+		//	print_vec(s2_arr, 0, s2_dim - 1) ; 
 
 			err = clEnqueueUnmapMemObject(resources->que, m.in, s2_arr,
 					1, &read_s2_evt, &unmap_s2_evt);
@@ -406,6 +523,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 			s[iteration].current_nwg = current_nwg ; 
 			iteration++; 
 		}
+		//sleep(1) ; 
     }  
 
 	end = clock() ; 

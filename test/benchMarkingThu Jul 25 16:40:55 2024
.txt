@@ -1,0 +1,56 @@
+--------
+current_nels : 33 current_nwg : 12  iteration : 0
+split elements evt : 14375 ns	 0.007722 GE/s	 0.03089 GB/s
+partial scan evt : 15572 ns	 0.009247 GE/s	 0.03699 GB/s
+scan tails evt : 14635 ns	 0.00328 GE/s	 0.01312 GB/s
+scan update evt : 6875 ns	 0.009018 GE/s	 0.03607 GB/s
+partition evt : 23229 ns	 0.002841 GE/s	 0.01137 GB/s
+partition copy evt : 6822 ns	 0.009675 GE/s	 0.0387 GB/s
+--------
+current_nels : 21 current_nwg : 6  iteration : 1
+split elements evt : 7447 ns	 0.009265 GE/s	 0.03706 GB/s
+partial scan evt : 9375 ns	 0.0096 GE/s	 0.0384 GB/s
+scan tails evt : 7864 ns	 0.003052 GE/s	 0.01221 GB/s
+scan update evt : 4531 ns	 0.008387 GE/s	 0.03355 GB/s
+partition evt : 5520 ns	 0.007609 GE/s	 0.03043 GB/s
+partition copy evt : 4010 ns	 0.01047 GE/s	 0.0419 GB/s
+--------
+current_nels : 11 current_nwg : 3  iteration : 2
+split elements evt : 7291 ns	 0.004938 GE/s	 0.01975 GB/s
+partial scan evt : 9010 ns	 0.005216 GE/s	 0.02087 GB/s
+scan tails evt : 7916 ns	 0.001516 GE/s	 0.006064 GB/s
+scan update evt : 4375 ns	 0.004114 GE/s	 0.01646 GB/s
+partition evt : 5885 ns	 0.003738 GE/s	 0.01495 GB/s
+partition copy evt : 4114 ns	 0.005348 GE/s	 0.02139 GB/s
+--------
+current_nels : 16 current_nwg : 6  iteration : 3
+split elements evt : 7135 ns	 0.007568 GE/s	 0.03027 GB/s
+partial scan evt : 9218 ns	 0.007594 GE/s	 0.03038 GB/s
+scan tails evt : 7760 ns	 0.003093 GE/s	 0.01237 GB/s
+scan update evt : 4375 ns	 0.0064 GE/s	 0.0256 GB/s
+partition evt : 5937 ns	 0.00539 GE/s	 0.02156 GB/s
+partition copy evt : 3385 ns	 0.009453 GE/s	 0.03781 GB/s
+--------
+current_nels : 6 current_nwg : 3  iteration : 4
+split elements evt : 7968 ns	 0.002636 GE/s	 0.01054 GB/s
+partial scan evt : 7812 ns	 0.003456 GE/s	 0.01382 GB/s
+scan tails evt : 7291 ns	 0.001646 GE/s	 0.006583 GB/s
+scan update evt : 4114 ns	 0.001945 GE/s	 0.007778 GB/s
+partition evt : 4895 ns	 0.002451 GE/s	 0.009806 GB/s
+partition copy evt : 3802 ns	 0.003156 GE/s	 0.01262 GB/s
+--------
+current_nels : 11 current_nwg : 3  iteration : 5
+split elements evt : 6510 ns	 0.00553 GE/s	 0.02212 GB/s
+partial scan evt : 8593 ns	 0.00547 GE/s	 0.02188 GB/s
+scan tails evt : 7395 ns	 0.001623 GE/s	 0.006491 GB/s
+scan update evt : 4166 ns	 0.004321 GE/s	 0.01728 GB/s
+partition evt : 5520 ns	 0.003986 GE/s	 0.01594 GB/s
+partition copy evt : 3854 ns	 0.005708 GE/s	 0.02283 GB/s
+--------
+current_nels : 7 current_nwg : 3  iteration : 6
+split elements evt : 6875 ns	 0.003491 GE/s	 0.01396 GB/s
+partial scan evt : 7812 ns	 0.003968 GE/s	 0.01587 GB/s
+scan tails evt : 7343 ns	 0.001634 GE/s	 0.006537 GB/s
+scan update evt : 4270 ns	 0.002342 GE/s	 0.009368 GB/s
+partition evt : 5364 ns	 0.00261 GE/s	 0.01044 GB/s
+partition copy evt : 3906 ns	 0.003584 GE/s	 0.01434 GB/s
