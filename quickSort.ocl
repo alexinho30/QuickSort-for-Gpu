@@ -4,8 +4,6 @@ typedef struct __attribute__ ((packed)) {
 	float pivot_value ; 	
 } sequence;
 
-// 32 15 4 21 3 7 6 4 1 3 5 
-
 kernel void split_elements(const int nels, const int sstart, global const float4 * restrict in,  
 const float pivot, global int * restrict lt, global int * restrict gt,  
 global int* bit_array_sup, global int* bit_array_inf,
@@ -28,25 +26,19 @@ local int * restrict arr_inf, local int* restrict arr_sup
     while(i < nquarts){
         float4 v = in[sstart/4 + i] ;
 
-        s[0] = v.s0 ; 
-        s[1] = v.s1 ;  
-        s[2] = v.s2 ; 
-        s[3] = v.s3 ; 
+        float s[4] = {v.s0, v.s1, v.s2, v.s3} ; 
 
         for(int t = 0; t < 4 ; t++){
 
             const int idx = i*4 + t - left_offset;
-            //printf("ind : %d v : %f \n", idx, s[t]) ; 
 
             if(s[t] < pivot  && idx < nels && idx >= 0){
-                //printf("ind : %d v : %f \n", idx, s[t]) ; 
                 v_inf++ ;  
                 bit_array_inf[idx] = 1 ;  
                 bit_array_sup[idx] = 0 ;  
             }
 
             else if(s[t] > pivot && idx < nels && idx >= 0){
-                //printf("ind : %d v : %f \n", idx, s[t]) ; 
                 v_sup++ ;  
                 bit_array_sup[idx] = 1 ;
                 bit_array_inf[idx] = 0 ;  
@@ -95,8 +87,6 @@ global int* restrict tails_inf, global int* restrict tails_sup, local int* restr
     int tail_inf = 0, tail_sup = 0 ;  
     const int end = min(start + nquarts_nwg, nquarts) ; 
 
-  // if(get_global_id(0) == 0) printf("nels : %d nquarts : %d \n", nels, nquarts) ; 
-
     while(start < end){
         barrier(CLK_LOCAL_MEM_FENCE) ; 
 
@@ -125,12 +115,8 @@ global int* restrict tails_inf, global int* restrict tails_sup, local int* restr
         int acc_inf = acc4_inf.s3 ; 
         int acc_sup = acc4_sup.s3 ; 
 
-       // printf("li : %d scanned acc_inf : (%d, %d, %d, %d)\n", li, acc4_inf.s0, acc4_inf.s1, acc4_inf.s2, acc4_inf.s3) ;
-       // printf("li : %d scanned acc_sup : (%d, %d, %d, %d)\n", li, acc4_sup.s0, acc4_sup.s1, acc4_sup.s2, acc4_sup.s3) ;   
-
         lmem_inf[li] = acc_inf ;
-        lmem_sup[li] = acc_sup ;
-       // printf("lmem_inf[%d] = %d lmem_sup[%d] = %d \n", li, lmem_inf[li], li, lmem_sup[li]) ;   
+        lmem_sup[li] = acc_sup ; 
 
         int div = 1 ; 
         int curr_idx = li ; 
@@ -150,16 +136,13 @@ global int* restrict tails_inf, global int* restrict tails_sup, local int* restr
         }        
 
         barrier(CLK_LOCAL_MEM_FENCE) ; 
-       // printf("--after---  lmem_inf[%d] = %d lmem_sup[%d] = %d \n", li, lmem_inf[li], li, lmem_sup[li]) ; 
 
         if(i < end){
             const int local_tail_inf = (li == 0)? 0 : lmem_inf[li - 1] ; 
             const int local_tail_sup = (li == 0)? 0 : lmem_sup[li - 1] ;
 
             if(tails_inf != bit_map_inf){
-               // printf("tail_inf : %d local_tail_inf : %d acc_inf : %d exclusive_inf : %d\n", tail_inf, local_tail_inf, acc4_inf, exclusive_inf) ; 
                 bit_map_inf[i] = acc4_inf + tail_inf + local_tail_inf - exclusive_inf; 
-              //  printf("tail_sup : %d local_tail_sup : %d acc_sup : %d exclusive_sup : %d\n", tail_sup, local_tail_sup, acc4_sup, exclusive_sup) ; 
                 bit_map_sup[i] = acc4_sup + tail_sup + local_tail_sup - exclusive_sup;
             }
             else{
@@ -278,15 +261,10 @@ kernel void partition_copy(const int nels, const sequence seq, global float* res
     const int right_offset = ((seq.send + 3)/4)*4 - (seq.send - 1);   
     int nquarts  = (nels + right_offset + left_offset + 3)/4 ;
 
-    float s[4] ; 
-
     while(i < nquarts){
         float4 v = out[i + seq.sstart/4] ;
-
-        s[0] = v.s0 ; 
-        s[1] = v.s1 ; 
-        s[2] = v.s2 ; 
-        s[3] = v.s3 ; 
+        float s[4] = {v.s0, v.s1, v.s2, v.s3} ; 
+        
         for(int t = 0 ; t < 4 ; t++){
             const int idx = i*4 + t - left_offset;
             if(idx < nels  && idx >= 0)  

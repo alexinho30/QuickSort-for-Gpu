@@ -252,7 +252,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		int current_nwg = nwg ;
 		const int current_nquarts = current_nels/4 ; 
 
-		while(current_nwg*lws > current_nels){
+		while(current_nwg*lws*4 > current_nels){
 			current_nwg /= 2 ; 
 		}
 
