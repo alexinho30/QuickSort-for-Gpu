@@ -1,48 +1,33 @@
-kernel void split_elements(const int nels, const int sstart, global const float4 * restrict in,  
+kernel void split_elements(const int nels, const int sstart, global const float * restrict in,  
 const float pivot, global int * restrict lt, global int * restrict gt,  
 global int* bit_array_sup, global int* bit_array_inf,
 local int * restrict arr_inf, local int* restrict arr_sup
 ){
+    int i = get_global_id(0) ; 
     const int li = get_local_id(0) ; 
     const int gi = get_group_id(0) ;
-    const int gs = get_global_size(0) ; 
-    int i = get_global_id(0) ;
-
-    const int send = nels + sstart - 1; 
-    const int left_offset = sstart%4 ;
-    const int right_offset = ((send + 3)/4)*4 - (send - 1);   
-    int nquarts  = (nels + right_offset + left_offset + 3)/4 ;   
+    const int gs = get_global_size(0) ;  
 
     int v_sup = 0 ;
     int v_inf = 0 ;
-    float s[4] ; 
 
-    while(i < nquarts){
-        float4 v = in[sstart/4 + i] ;
+    while(i < nels){
+        float v = in[sstart + i] ;
 
-        float s[4] = {v.s0, v.s1, v.s2, v.s3} ; 
-
-        for(int t = 0; t < 4 ; t++){
-
-            const int idx = i*4 + t - left_offset;
-
-            if(s[t] < pivot  && idx < nels && idx >= 0){
-                v_inf++ ;  
-                bit_array_inf[idx] = 1 ;  
-                bit_array_sup[idx] = 0 ;  
-            }
-
-            else if(s[t] > pivot && idx < nels && idx >= 0){
-                v_sup++ ;  
-                bit_array_sup[idx] = 1 ;
-                bit_array_inf[idx] = 0 ;  
-            } 
-            else{
-                bit_array_sup[idx] = 0 ; 
-                bit_array_inf[idx] = 0 ;  
-            }
+        if(v < pivot){
+            v_inf++ ;  
+            bit_array_inf[i] = 1 ;
+            bit_array_sup[i] = 0 ;  
         }
-
+        else if(v > pivot){
+            v_sup++ ;  
+            bit_array_sup[i] = 1 ;
+            bit_array_inf[i] = 0 ;  
+        } 
+        else{
+            bit_array_sup[i] = 0 ; 
+            bit_array_inf[i] = 0 ;  
+        }
 
         i += gs ;
     }
@@ -247,24 +232,14 @@ global const int* restrict bit_map_sup, global const int* restrict bit_map_inf, 
     }   
 }
 
-kernel void partition_copy(const int nels, const int sstart, global float* restrict in, global float4* restrict out, 
+kernel void partition_copy(const int nels, const int sstart, global float* restrict in, global float* restrict out, 
                             const int lt, const int gt){
 
     int i =  get_global_id(0) ; 
 
-    const int send = nels + sstart - 1; 
-    const int left_offset = sstart%4 ;
-    const int right_offset = ((send + 3)/4)*4 - (send - 1);   
-    int nquarts  = (nels + right_offset + left_offset + 3)/4 ;
-
-    while(i < nquarts){
-        float4 v = out[i + sstart/4] ;
-        float s[4] = {v.s0, v.s1, v.s2, v.s3} ; 
-        for(int t = 0 ; t < 4 ; t++){
-            const int idx = i*4 + t - left_offset;
-            if(idx < nels  && idx >= 0)  
-            in[idx + sstart] = s[t] ;
-        } 
+    while(i < nels){
+        float v = out[i + sstart] ; 
+        in[i + sstart] = v ; 
         i+=get_global_size(0) ; 
     }  
 

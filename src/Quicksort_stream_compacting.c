@@ -197,9 +197,9 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 	times* t = calloc(MAX_NUM_SEQ, sizeof(times)) ; 
 	sequences_info* s = calloc(MAX_NUM_SEQ, sizeof(sequences_info)) ;  
 
-	time_t start, end ; 
-	double time_used ; 
-	start = clock() ; 
+	time_t quicksort_gpu_start, quicksort_gpu_end ; 
+	double time_used_gpu ; 
+	quicksort_gpu_start = clock() ; 
 	
 
 	cl_int err ; 
@@ -246,24 +246,18 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 	enqueue(&sequences_to_partion, &start_sequence) ;  
 
 	int iteration = 0; 
-	const int nquarts = nels/4 ; 
 
     while(!is_Empty(&sequences_to_partion)){ 
 
 		sequence curr_seq = dequeue(&sequences_to_partion) ; 
 		const int current_nels = curr_seq.send - curr_seq.sstart + 1 ;
 		int current_nwg = nwg ;
-		const int current_nquarts = current_nels/4 ; 
 
 		while(current_nwg*lws*4 > current_nels){
 			current_nwg /= 2 ; 
 		}
 
 		if(!current_nwg) current_nwg++ ; 
-
-		cl_event read_s1_evt ; 
-		cl_event unmap_s1_evt ; 
-		float* s1_arr = NULL;
 
         cl_event evt_split_elements = split_elements(resources->que, &k, &m, current_nels, curr_seq.sstart, lws, curr_seq.pivot_value, current_nwg) ; 
 
@@ -418,9 +412,9 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		}
     }  
 
-	end = clock() ; 
-	time_used = ((double)(end - start))/CLOCKS_PER_SEC ; 
-	printf("total time :  %f\n", time_used) ; 
+	quicksort_gpu_end = clock() ; 
+	time_used_gpu = ((double)(quicksort_gpu_end - quicksort_gpu_start))/CLOCKS_PER_SEC ; 
+	printf("total time :  %f\n", time_used_gpu) ; 
 
 	cl_event read_out_evt ; 
 	cl_event unmap_out_evt ; 
@@ -438,8 +432,18 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 
 		float*vec_to_sort_on_cpu =  calloc(nels, sizeof(float)) ;
 
-		copy_vec(vec, vec_to_sort_on_cpu, 0, nels - 1) ; 
+		copy_vec(vec, vec_to_sort_on_cpu, 0, nels - 1) ;
+
+		time_t quicksort_cpu_start, quicksort_cpu_end ; 
+		double time_used_cpu ; 
+		quicksort_cpu_start = clock() ;  
+
 		quicksort(vec_to_sort_on_cpu, 0, nels - 1) ; 
+
+		quicksort_cpu_end = clock() ; 
+		time_used_cpu = ((double)(quicksort_cpu_end - quicksort_cpu_start))/CLOCKS_PER_SEC ; 
+		printf("total time :  %f\n", time_used_cpu) ; 
+
 		check_result(out, vec_to_sort_on_cpu, nels) ;
 
 		free(vec_to_sort_on_cpu) ; 
