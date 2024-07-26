@@ -4,7 +4,7 @@
 #include<math.h>
 #include <stdbool.h>
 #include "../include/quicksort_cpu_version.h"
-#define MAX_NUM_SEQ 300000
+#define MAX_NUM_SEQ 30000000
 #define TEST 1
 
 #include<stdio.h>
