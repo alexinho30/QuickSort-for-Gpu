@@ -1,4 +1,5 @@
 #include "../include/Quicksort_stream_compacting.h"
+#include "../include/random_numbers.h"
 
 cl_event split_elements(cl_command_queue q, kernels* k, device_memeory* m , cl_int nels, cl_int sstart,
 	cl_int lws_, cl_float pivot, const int nwg){
@@ -242,7 +243,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
     sequence start_sequence ; 
     start_sequence.sstart = 0 ; 
     start_sequence.send = nels - 1 ; 
-	start_sequence.pivot_value = vec[rand()%nels] ; 
+	start_sequence.pivot_value = vec[random_uniform_value(0, nels - 1)] ; 
 	enqueue(&sequences_to_partion, &start_sequence) ;  
 
 	int iteration = 0; 
@@ -328,7 +329,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		const int s2_dim = s2.send - s2.sstart + 1 ;
 
 		if((s1_dim > 2*lws)){
-			const int pivot_index = rand()%s1_dim + s1.sstart; 
+			const int pivot_index = random_uniform_value(0, s1_dim - 1) + s1.sstart; 
 
 			#if 1
 				cl_event read_pivot_s1_evt ; 
@@ -338,17 +339,18 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 				s1_pivot = clEnqueueMapBuffer(resources->que, m.in, CL_TRUE,
 						CL_MAP_READ | CL_MAP_WRITE, sizeof(cl_float)*pivot_index, sizeof(cl_float),
 							0, NULL, & read_pivot_s1_evt , &err) ; 
-				ocl_check(err, "read buffer out") ;
+				ocl_check(err, "read s1 pivot") ;
 
 				s1.pivot_value = (float)*s1_pivot ; 
 
 				err = clEnqueueUnmapMemObject(resources->que, m.in, s1_pivot,
 						1, &read_pivot_s1_evt , &unmap_pivot_s1_evt);
-				ocl_check(err, "unmap buffer out");
+				ocl_check(err, "unmap s1 pivot");
 			#else
 				float s1_pivot ; 
 				err = clEnqueueReadBuffer(resources->que, m.in, CL_TRUE, 0, sizeof(cl_float), &s1_pivot, 0, NULL,  NULL);
-				s1.pivot_value = s1_pivot ; 			
+				s1.pivot_value = s1_pivot ; 
+			
 			#endif
 
 			enqueue(&sequences_to_partion, &s1) ; 
@@ -362,17 +364,17 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 			s1_arr = clEnqueueMapBuffer(resources->que, m.in, CL_TRUE,
 					CL_MAP_READ | CL_MAP_WRITE, sizeof(cl_float)*s1.sstart, sizeof(cl_float)*s1_dim,
 						0, NULL, &read_s1_evt , &err) ; 
-			ocl_check(err, "read buffer out") ;
+			ocl_check(err, "read s1 sequence") ;
 
 			quicksort(s1_arr, 0, s1_dim - 1) ;
 
 			err = clEnqueueUnmapMemObject(resources->que, m.in, s1_arr,
 					1, &read_s1_evt, &unmap_s1_evt);
-			ocl_check(err, "unmap buffer out");
+			ocl_check(err, "unmap s1 sequence");
 		}
 
 		if((s2_dim > 2*lws)){
-			const int pivot_index = rand()%s2_dim + s2.sstart; 
+			const int pivot_index = random_uniform_value(0, s2_dim - 1) + s2.sstart; 
 
 			#if 1
 				cl_event read_pivot_s2_evt ; 
@@ -382,13 +384,13 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 				s2_pivot = clEnqueueMapBuffer(resources->que, m.in, CL_TRUE,
 						CL_MAP_READ | CL_MAP_WRITE, sizeof(cl_float)*pivot_index, sizeof(cl_float),
 							0, NULL, &read_pivot_s2_evt , &err) ; 
-				ocl_check(err, "read buffer out") ;
+				ocl_check(err, "read s2 pivot") ;
 
 				s2.pivot_value = (float)*s2_pivot ; 
 
 				err = clEnqueueUnmapMemObject(resources->que, m.in, s2_pivot,
 						1, &read_pivot_s2_evt , &unmap_pivot_s2_evt);
-				ocl_check(err, "unmap buffer out");
+				ocl_check(err, "unmap s2 pivot");
 			#else
 				float s2_pivot ; 
 				err = clEnqueueReadBuffer(resources->que, m.in, CL_TRUE, pivot_index*sizeof(cl_float), sizeof(cl_float), &s2_pivot, 0, NULL,  NULL);
@@ -405,13 +407,13 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 			s2_arr = clEnqueueMapBuffer(resources->que, m.in, CL_TRUE,
 					CL_MAP_READ | CL_MAP_WRITE, sizeof(cl_float)*s2.sstart, sizeof(cl_float)*s2_dim,
 						0, NULL, &read_s2_evt , &err) ; 
-			ocl_check(err, "read buffer out") ;
+			ocl_check(err, "read s2 sequence") ;
 
 			quicksort(s2_arr, 0, s2_dim - 1) ; 
 
 			err = clEnqueueUnmapMemObject(resources->que, m.in, s2_arr,
 					1, &read_s2_evt, &unmap_s2_evt);
-			ocl_check(err, "unmap buffer out") ; 
+			ocl_check(err, "unmap s2 sequence") ; 
 		}
 
 		if(test_correctness){
