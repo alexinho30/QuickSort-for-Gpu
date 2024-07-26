@@ -329,20 +329,29 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		const int s2_dim = s2.send - s2.sstart + 1 ;
 
 		if((s1_dim > 2*lws)){
-			cl_event read_s1_evt ; 
-			cl_event unmap_s1_evt ; 
-			float* s1_arr = NULL;
+			const int pivot_index = random_uniform_value(0, s1_dim - 1) + s1.sstart; 
 
-			s1_arr = clEnqueueMapBuffer(resources->que, m.in, CL_TRUE,
-					CL_MAP_READ | CL_MAP_WRITE, sizeof(cl_float)*s1.sstart, sizeof(cl_float)*s1_dim,
-						0, NULL, &read_s1_evt , &err) ; 
-			ocl_check(err, "read buffer out") ;
+			#if 1
+				cl_event read_pivot_s1_evt ; 
+				cl_event unmap_pivot_s1_evt ; 
+				float* s1_pivot = NULL;
 
-			s1.pivot_value = (float)s1_arr[rand()%s1_dim] ; 
+				s1_pivot = clEnqueueMapBuffer(resources->que, m.in, CL_TRUE,
+						CL_MAP_READ | CL_MAP_WRITE, sizeof(cl_float)*pivot_index, sizeof(cl_float),
+							0, NULL, & read_pivot_s1_evt , &err) ; 
+				ocl_check(err, "read s1 pivot") ;
 
-			err = clEnqueueUnmapMemObject(resources->que, m.in, s1_arr,
-					1, &read_s1_evt, &unmap_s1_evt);
-			ocl_check(err, "unmap buffer out");
+				s1.pivot_value = (float)*s1_pivot ; 
+
+				err = clEnqueueUnmapMemObject(resources->que, m.in, s1_pivot,
+						1, &read_pivot_s1_evt , &unmap_pivot_s1_evt);
+				ocl_check(err, "unmap s1 pivot");
+			#else
+				float s1_pivot ; 
+				err = clEnqueueReadBuffer(resources->que, m.in, CL_TRUE, 0, sizeof(cl_float), &s1_pivot, 0, NULL,  NULL);
+				s1.pivot_value = s1_pivot ; 
+			
+			#endif
 
 			enqueue(&sequences_to_partion, &s1) ; 
 		}
@@ -364,23 +373,31 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		}
 
 		if((s2_dim > 2*lws)){
+			const int pivot_index = random_uniform_value(0, s2_dim - 1) + s2.sstart; 
 
-			cl_event read_s2_evt ; 
-			cl_event unmap_s2_evt ; 
-			float* s2_arr = NULL;
+			#if 1
+				cl_event read_pivot_s2_evt ; 
+				cl_event unmap_pivot_s2_evt ; 
+				float* s2_pivot = NULL;
 
-			s2_arr = clEnqueueMapBuffer(resources->que, m.in, CL_TRUE,
-					CL_MAP_READ | CL_MAP_WRITE, sizeof(cl_float)*s2.sstart, sizeof(cl_float)*s2_dim,
-						0, NULL, &read_s2_evt , &err) ; 
-			ocl_check(err, "read buffer out") ;
+				s2_pivot = clEnqueueMapBuffer(resources->que, m.in, CL_TRUE,
+						CL_MAP_READ | CL_MAP_WRITE, sizeof(cl_float)*pivot_index, sizeof(cl_float),
+							0, NULL, &read_pivot_s2_evt , &err) ; 
+				ocl_check(err, "read s2 pivot") ;
 
-			s2.pivot_value  = (float)s2_arr[rand()%s2_dim] ;
+				s2.pivot_value = (float)*s2_pivot ; 
 
-			err = clEnqueueUnmapMemObject(resources->que, m.in, s2_arr,
-					1, &read_s2_evt, &unmap_s2_evt);
-			ocl_check(err, "unmap buffer out") ; 
+				err = clEnqueueUnmapMemObject(resources->que, m.in, s2_pivot,
+						1, &read_pivot_s2_evt , &unmap_pivot_s2_evt);
+				ocl_check(err, "unmap s2 pivot");
+			#else
+				float s2_pivot ; 
+				err = clEnqueueReadBuffer(resources->que, m.in, CL_TRUE, pivot_index*sizeof(cl_float), sizeof(cl_float), &s2_pivot, 0, NULL,  NULL);
+				s2.pivot_value = s2_pivot ; 	
+			#endif
  
 			enqueue(&sequences_to_partion, &s2) ;
+
 		}
 		else if(s2_dim > 1){
 			cl_event read_s2_evt ; 
