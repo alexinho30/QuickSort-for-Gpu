@@ -1,5 +1,5 @@
 #include "../include/Quicksort_stream_compacting.h"
-#include "../include/random_numbers.h"
+
 
 cl_event split_elements(cl_command_queue q, kernels* k, device_memeory* m , cl_int nels, cl_int sstart,
 	cl_int lws_, cl_float pivot, const int nwg){
