@@ -76,6 +76,7 @@ int main(int argc, char* const* argv){
 
 	err = clGetDeviceInfo(resource.d, CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(ncu), &ncu, NULL);
 	cl_uint nwg = ncu*nwg_cu;
+	
 	printf("Nwg: %d*%d = %d\n", nwg_cu, ncu, nwg);
 
 	float* vec ; 
@@ -98,6 +99,9 @@ int main(int argc, char* const* argv){
 				unif_distr_arr(vec, nels, p1, p2) ;
 				break ;    
 		}
+
+		//printf("start vector : \n") ; 
+		//print_vec(vec, 0, nels -1) ; 
 
 		quickSortGpu(vec, nels, lws, nwg, &resource, test_mode) ; 
 	}

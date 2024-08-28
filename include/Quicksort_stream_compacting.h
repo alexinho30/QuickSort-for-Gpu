@@ -25,12 +25,10 @@ typedef struct{
 typedef struct{
     cl_mem in ; 
     cl_mem buff_tmp ; 
-    cl_mem lt ;
     cl_mem bit_map_sup ; 
     cl_mem bit_map_inf ; 
     cl_mem tails_inf ; 
-    cl_mem tails_sup ;
-    cl_mem gt ;  
+    cl_mem tails_sup ; 
 }device_memeory ; 
 
 float* quickSortGpu(const float* vec, const int nels, const int lws, const int nwg_cu, cl_resources* resources, bool test_mode) ; 
