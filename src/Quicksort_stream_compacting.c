@@ -235,25 +235,6 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		const int current_nels = curr_seq.send - curr_seq.sstart + 1 ;
 		int current_nwg = nwg ;
 
-
-	 /*	cl_event read_in_evt ; 
-		cl_event unmap_in_evt ; 
-		float* curr_seq_vec = NULL;
-
-		curr_seq_vec = clEnqueueMapBuffer(resources->que, m.in, CL_TRUE,
-				CL_MAP_READ | CL_MAP_WRITE, curr_seq.sstart*sizeof(cl_float), current_nels*sizeof(cl_float),
-					0, NULL, &read_in_evt , &err) ; 
-		ocl_check(err, "read s1 pivot") ;
-
-		printf("curr sed sstart : %d currseq send : %d pivot : %f\n", curr_seq.sstart, curr_seq.send, curr_seq.pivot_value) ; 
-		print_vec(curr_seq_vec, 0, current_nels - 1) ; 
-
-		err = clEnqueueUnmapMemObject(resources->que, m.in, curr_seq_vec,
-				1, &read_in_evt, &unmap_in_evt);
-		ocl_check(err, "unmap s1 pivot");*/
-
-		
-
 		while(current_nwg*lws > current_nels){
 			current_nwg /= 2 ; 
 		}
