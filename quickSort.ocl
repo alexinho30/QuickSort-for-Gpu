@@ -144,10 +144,11 @@ global int* restrict tails_sup, global int* restrict tails_inf){
 }
 
 kernel void partition_buff_tmp(const int nels, const int sstart, const float pivot_value, global float* restrict in, global float* restrict out, 
-global const int* restrict bit_map_sup, global const int* restrict bit_map_inf, const int lt, const int gt){
+global const int* restrict bit_map_sup, global const int* restrict bit_map_inf){
 
    int i = get_global_id(0) ; 
    const int send = sstart + nels - 1 ; 
+   const int gt = bit_map_sup[nels - 1] + bit_map_sup[nels - 2] ; 
 
     while(i < nels){
         const float v = in[i + sstart] ;
@@ -172,8 +173,7 @@ global const int* restrict bit_map_sup, global const int* restrict bit_map_inf, 
     }   
 }
 
-kernel void partition_copy(const int nels, const int sstart, global float* restrict in, global float* restrict out, 
-                            const int lt, const int gt){
+kernel void partition_copy(const int nels, const int sstart, global float* restrict in, global float* restrict out){
 
     int i =  get_global_id(0) ; 
 
