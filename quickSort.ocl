@@ -172,8 +172,7 @@ global const int* restrict bit_map_sup, global const int* restrict bit_map_inf, 
     }   
 }
 
-kernel void partition_copy(const int nels, const int sstart, global float* restrict in, global float* restrict out, 
-                            const int lt, const int gt){
+kernel void partition_copy(const int nels, const int sstart, global float* restrict in, global float* restrict out){
 
     int i =  get_global_id(0) ; 
 

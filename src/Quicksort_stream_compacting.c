@@ -155,8 +155,8 @@ cl_event partition(cl_command_queue q, kernels* k, device_memeory* m, cl_int lt,
     return partition_evt; 
 }
 
-cl_event partition_copy(cl_command_queue que, kernels* k, device_memeory* m,  int lt, 
-	const int gt, const sequence seq, const int nels, const int lws_, const int nwg){
+cl_event partition_copy(cl_command_queue que, kernels* k, device_memeory* m, const sequence seq, 
+const int nels, const int lws_, const int nwg){
 
 	cl_int err ; 
 	cl_event partition_evt ; 
@@ -175,12 +175,6 @@ cl_event partition_copy(cl_command_queue que, kernels* k, device_memeory* m,  in
 
 	err = clSetKernelArg(k->partitioning_copy, 3, sizeof(m->buff_tmp), &m->buff_tmp) ;
 	ocl_check(err, "set kernel out") ;
-
-	err = clSetKernelArg(k->partitioning_copy, 4, sizeof(cl_int), &lt) ;
-	ocl_check(err, "set kernel lt") ;
-
-	err = clSetKernelArg(k->partitioning_copy, 5, sizeof(cl_int), &gt) ;
-	ocl_check(err, "set kernel gt") ;
 
 	err = clEnqueueNDRangeKernel(que,  k->partitioning_copy, 1, NULL, gws, lws, 0, NULL, &partition_evt) ;
     ocl_check(err, "enqueue partition copy kernel") ; 
@@ -306,7 +300,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 
 		cl_event partition_evt = partition(resources->que, &k,  &m, lt_cpu[current_nwg - 1], gt_cpu[current_nwg -1], curr_seq, current_nels, lws, current_nwg) ; 
 		clWaitForEvents(1, &partition_evt) ;
-		cl_event partition_copy_evt = partition_copy(resources->que, &k, &m, lt_cpu[current_nwg - 1], gt_cpu[current_nwg -1], curr_seq, current_nels, lws, current_nwg) ;
+		cl_event partition_copy_evt = partition_copy(resources->que, &k, &m, curr_seq, current_nels, lws, current_nwg) ;
 		clWaitForEvents(1, &partition_copy_evt) ; 
 
 		sequence s1, s2 ; 
@@ -431,7 +425,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 
 	quicksort_gpu_end = clock() ; 
 	time_used_gpu = ((double)(quicksort_gpu_end - quicksort_gpu_start))/CLOCKS_PER_SEC ; 
-	printf("total time :  %f\n", time_used_gpu) ; 
+	printf("gpu time :  %f\n", time_used_gpu) ; 
 
 	cl_event read_out_evt ; 
 	cl_event unmap_out_evt ; 
@@ -458,7 +452,8 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		quicksort(vec_to_sort_on_cpu, 0, nels - 1) ; 
 
 		quicksort_cpu_end = clock() ; 
-		time_used_cpu = ((double)(quicksort_cpu_end - quicksort_cpu_start))/CLOCKS_PER_SEC ; 
+		time_used_cpu = ((double)(quicksort_cpu_end - quicksort_cpu_start))/CLOCKS_PER_SEC ;
+		printf("cpu time : %f\n", time_used_cpu) ;  
 
 		check_result(out, vec_to_sort_on_cpu, nels) ;
 
