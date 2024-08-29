@@ -27,13 +27,11 @@ local int * restrict arr_inf, local int* restrict arr_sup
             const int idx = i*4 + t - left_offset;
 
             if(s[t] < pivot  && idx < nels && idx >= 0){
-                v_inf++ ;  
                 bit_array_inf[idx] = 1 ;  
                 bit_array_sup[idx] = 0 ;  
             }
 
             else if(s[t] > pivot && idx < nels && idx >= 0){
-                v_sup++ ;  
                 bit_array_sup[idx] = 1 ;
                 bit_array_inf[idx] = 0 ;  
             } 
@@ -42,30 +40,7 @@ local int * restrict arr_inf, local int* restrict arr_sup
                 bit_array_inf[idx] = 0 ;  
             }
         }
-
-
         i += gs ;
-    }
-
-    arr_sup[li] = v_sup ; 
-    arr_inf[li] = v_inf ; 
-
-    int active = get_local_size(0)/2 ; 
-    
-    while(active > 0){
-        barrier(CLK_LOCAL_MEM_FENCE);
-        if(li < active){
-            v_sup += arr_sup[li + active] ; 
-            v_inf += arr_inf[li + active] ; 
-            arr_sup[li] = v_sup ; 
-            arr_inf[li] = v_inf ; 
-        }
-        active/=2 ; 
-    }
-
-    if(li == 0){
-        lt[gi] = v_inf ; 
-        gt[gi] = v_sup ; 
     }
 }
 
@@ -211,8 +186,7 @@ global const int* restrict bit_map_sup, global const int* restrict bit_map_inf, 
     }   
 }
 
-kernel void partition_copy(const int nels, const int sstart, global float* restrict in, global float4* restrict out, 
-                            const int lt, const int gt){
+kernel void partition_copy(const int nels, const int sstart, global float* restrict in, global float4* restrict out){
 
     int i =  get_global_id(0) ; 
 
@@ -231,5 +205,4 @@ kernel void partition_copy(const int nels, const int sstart, global float* restr
         } 
         i+=get_global_size(0) ; 
     }  
-
 }
