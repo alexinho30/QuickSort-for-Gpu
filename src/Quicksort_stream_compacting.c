@@ -20,23 +20,12 @@ cl_event split_elements(cl_command_queue q, kernels* k, device_memeory* m , cl_i
 	err = clSetKernelArg(k->splitting_elements, 3, sizeof(pivot), &pivot) ;
 	ocl_check(err, "set kernel pivot") ;
 
-	err = clSetKernelArg(k->splitting_elements, 4, sizeof(m->lt), &m->lt) ;
-	ocl_check(err, "set kernel lt") ;
-
-	err = clSetKernelArg(k->splitting_elements, 5, sizeof(m->gt), &m->gt) ;
-	ocl_check(err, "set kernel gt") ;
-
-	err = clSetKernelArg(k->splitting_elements, 6, sizeof(m->bit_map_sup), &m->bit_map_sup) ;
+	err = clSetKernelArg(k->splitting_elements, 4, sizeof(m->bit_map_sup), &m->bit_map_sup) ;
 	ocl_check(err, "set kernel bit_array_sup") ;
 
-	err = clSetKernelArg(k->splitting_elements, 7, sizeof(m->bit_map_inf), &m->bit_map_inf) ;
+	err = clSetKernelArg(k->splitting_elements, 5, sizeof(m->bit_map_inf), &m->bit_map_inf) ;
 	ocl_check(err, "set kernel bit_array_inf") ;
 
-	err = clSetKernelArg(k->splitting_elements, 8, sizeof(cl_int)*lws[0], NULL) ;
-	ocl_check(err, "set kernel local mem inf") ;
-
-	err = clSetKernelArg(k->splitting_elements, 9, sizeof(cl_int)*lws[0], NULL) ;
-	ocl_check(err, "set kernel local mem sup") ;
 
 	err = clEnqueueNDRangeKernel(q, k->splitting_elements, 1, NULL, gws, lws, 0, NULL, &evt_split_elements) ;
     ocl_check(err, "enqueue split elements kernel") ; 
@@ -154,8 +143,8 @@ cl_event partition(cl_command_queue q, kernels* k, device_memeory* m, cl_int lt,
     return partition_evt; 
 }
 
-cl_event partition_copy(cl_command_queue que, kernels* k, device_memeory* m,  int lt, 
-	const int gt, const sequence seq, const int nels, const int lws_, const int nwg){
+cl_event partition_copy(cl_command_queue que, kernels* k, device_memeory* m, const sequence seq, 
+const int nels, const int lws_, const int nwg){
 
 	cl_int err ; 
 	cl_event partition_evt ; 
@@ -175,12 +164,6 @@ cl_event partition_copy(cl_command_queue que, kernels* k, device_memeory* m,  in
 	err = clSetKernelArg(k->partitioning_copy, 3, sizeof(m->buff_tmp), &m->buff_tmp) ;
 	ocl_check(err, "set kernel out") ;
 
-	err = clSetKernelArg(k->partitioning_copy, 4, sizeof(cl_int), &lt) ;
-	ocl_check(err, "set kernel lt") ;
-
-	err = clSetKernelArg(k->partitioning_copy, 5, sizeof(cl_int), &gt) ;
-	ocl_check(err, "set kernel gt") ;
-
 	err = clEnqueueNDRangeKernel(que,  k->partitioning_copy, 1, NULL, gws, lws, 0, NULL, &partition_evt) ;
     ocl_check(err, "enqueue partition copy kernel") ; 
 
@@ -188,7 +171,7 @@ cl_event partition_copy(cl_command_queue que, kernels* k, device_memeory* m,  in
 
 }
 
-int median_computation(cl_command_queue que, kernels* k, device_memeory*m, int sstart, int send, 
+float median_computation(cl_command_queue que, kernels* k, device_memeory*m, int sstart, int send, 
 	int lws, const int nwg){
 
 	bool pivot_found = false ; 
@@ -249,78 +232,88 @@ int median_computation(cl_command_queue que, kernels* k, device_memeory*m, int s
 			current_nwg/=2 ; 
 		} 
 
+		sequence curr_seq ; 
+		curr_seq.sstart = sstart ; 
+		curr_seq.send = send ; 
+		curr_seq.pivot_value = pivot ; 
+
 		cl_event evt_split_elements = split_elements(que, k, m, current_nels, sstart, lws, pivot, current_nwg) ;  
 	
 		clWaitForEvents(1, &evt_split_elements) ;
 
+		cl_event scan_evt[3] ; 
+		
+		scan_evt[0] = scan_seq(que, k, m,  m->bit_map_sup, m->bit_map_inf, current_nels, lws, current_nwg) ;
+		scan_evt[1] = scan_seq(que, k, m, m->tails_sup, m->tails_inf, current_nwg, lws, 1) ;  
+		scan_evt[2] = scan_seq_update(que, k, m, current_nels, lws, current_nwg - 1) ;  
+
+		clWaitForEvents(3, scan_evt) ; 
+
 		cl_event read_evt_lt ;
 		cl_event read_evt_gt ; 
-	
-			int* lt_cpu = NULL ;
-			int* gt_cpu = NULL ;  
-			lt_cpu = clEnqueueMapBuffer(que, m->lt, CL_TRUE,
-						CL_MAP_READ | CL_MAP_WRITE, 0, sizeof(cl_int)*(current_nwg),
-							0, NULL, &read_evt_lt, &err) ; 
-			ocl_check(err, "read buffer lt") ; 
+		cl_event read_evt_last_value ; 
+  
+		int* lt = NULL ;
+		int* gt = NULL ; 
+		float* last_value =  NULL ; 
+		
+		lt = clEnqueueMapBuffer(que, m->bit_map_inf, CL_TRUE,
+					CL_MAP_READ | CL_MAP_WRITE, (current_nels - 1)*sizeof(cl_int), sizeof(cl_int),
+						0, NULL, &read_evt_lt, &err) ; 
+		ocl_check(err, "read buffer lt") ; 
 
-			gt_cpu = clEnqueueMapBuffer(que, m->gt, CL_TRUE,
-						CL_MAP_READ | CL_MAP_WRITE, 0, sizeof(cl_int)*(current_nwg),
-							0, NULL, &read_evt_gt, &err);
-			ocl_check(err, "read buffer gt");
+		last_value = clEnqueueMapBuffer(que, m->in, CL_TRUE,
+					CL_MAP_READ | CL_MAP_WRITE,  (curr_seq.sstart +current_nels - 1)*sizeof(cl_float), sizeof(cl_float),
+						0, NULL, &read_evt_last_value, &err) ; 
+		ocl_check(err, "read buffer lt") ; 
 
-			scan(lt_cpu, current_nwg) ; 
-			scan(gt_cpu, current_nwg) ; 
+		gt = clEnqueueMapBuffer(que, m->bit_map_sup, CL_TRUE,
+					CL_MAP_READ | CL_MAP_WRITE, (current_nels - 1)*sizeof(cl_int), sizeof(cl_int),
+						0, NULL, &read_evt_gt, &err);
+		ocl_check(err, "read buffer gt");
 
-			const int sum_lt = lt_cpu[current_nwg - 1] ; 
-			const int sum_gt = gt_cpu[current_nwg - 1] ; 
+		const int sum_lt = (*last_value >= curr_seq.pivot_value) ? *lt : *lt +1 ; 
+		const int sum_gt = (*last_value <= curr_seq.pivot_value) ? *gt : *gt +1  ; 
 
-			cl_event unmap_evt_lt;
-			err = clEnqueueUnmapMemObject(que, m->lt, lt_cpu,
-						1, &read_evt_lt, &unmap_evt_lt);
-			ocl_check(err, "unmap lt");
+		cl_event unmap_evt_lt;
+		err = clEnqueueUnmapMemObject(que, m->bit_map_inf, lt,
+					1, &read_evt_lt, &unmap_evt_lt);
+		ocl_check(err, "unmap lt");
 
-			cl_event unmap_evt_gt;
-			err = clEnqueueUnmapMemObject(que, m->gt, gt_cpu,
-						1, &read_evt_gt, &unmap_evt_gt);
-			ocl_check(err, "unmap gt"); 
+		cl_event unmap_evt_gt;
+		err = clEnqueueUnmapMemObject(que, m->bit_map_sup, gt,
+					1, &read_evt_gt, &unmap_evt_gt);
+		ocl_check(err, "unmap gt");
 
-			cl_event scan_evt[3] ; 
-			
-			scan_evt[0] = scan_seq(que, k, m,  m->bit_map_sup, m->bit_map_inf, current_nels, lws, current_nwg) ;
-			scan_evt[1] = scan_seq(que, k, m, m->tails_sup, m->tails_inf, current_nwg, lws, 1) ;  
-			scan_evt[2] = scan_seq_update(que, k, m, current_nels, lws, current_nwg - 1) ;  
+		cl_event unmap_evt_last_value;
+		err = clEnqueueUnmapMemObject(que, m->in, last_value,
+					1, &read_evt_last_value, &unmap_evt_last_value);
+		ocl_check(err, "unmap gt");
 
-			clWaitForEvents(3, scan_evt) ; 
+		cl_event partition_evt = partition(que, k,  m, sum_lt, sum_gt, curr_seq, current_nels, lws, current_nwg) ; 
+		clWaitForEvents(1, &partition_evt) ;
+		cl_event partition_copy_evt = partition_copy(que, k, m, curr_seq, current_nels, lws, current_nwg) ;
+		clWaitForEvents(1, &partition_copy_evt) ; 
+		
+		for(int idx_pivot = curr_seq.sstart + sum_lt ; idx_pivot < curr_seq.send - sum_gt ; idx_pivot++){
+			const int pivot_statistic = idx_pivot + 1 ;  
 
-			sequence curr_seq ; 
-			curr_seq.sstart = sstart ; 
-			curr_seq.send = send ; 
-			curr_seq.pivot_value = pivot ; 
-
-			cl_event partition_evt = partition(que, k,  m, lt_cpu[current_nwg - 1], gt_cpu[current_nwg -1], curr_seq, current_nels, lws, current_nwg) ; 
-			clWaitForEvents(1, &partition_evt) ;
-			cl_event partition_copy_evt = partition_copy(que, k, m, lt_cpu[current_nwg - 1], gt_cpu[current_nwg -1], curr_seq, current_nels, lws, current_nwg) ;
-			clWaitForEvents(1, &partition_copy_evt) ; 
-			
-			for(int idx_pivot = curr_seq.sstart + sum_lt ; idx_pivot < curr_seq.send - sum_gt ; idx_pivot++){
-				const int pivot_statistic = idx_pivot + 1 ;  
-
-				if(pivot_statistic == median){
-					pivot_found = true ; 
-					break ; 
-				}
+			if(pivot_statistic == median){
+				pivot_found = true ; 
+				break ; 
 			}
-			if(pivot_found == true){
-				break ;
+		}
+		if(pivot_found == true){
+			break ;
+		}
+		else{
+			if(median < curr_seq.sstart + sum_lt + 1){
+				send = sstart + sum_lt - 1 ; 
 			}
 			else{
-			    if(median < curr_seq.sstart + sum_lt + 1){
-					send = sstart + sum_lt - 1 ; 
-				}
-				else{
-					sstart+=sum_lt + 1 ; 
-				} 
-			}
+				sstart+=sum_lt + 1 ; 
+			} 
+		}
 	}
 
 	return pivot ; 
@@ -402,38 +395,6 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 
 		clWaitForEvents(1, &evt_split_elements) ;
 
-		cl_event read_evt_lt ;
-		cl_event read_evt_gt ; 
-  
-		int* lt_cpu = NULL ;
-		int* gt_cpu = NULL ; 
-		
-		lt_cpu = clEnqueueMapBuffer(resources->que, m.lt, CL_TRUE,
-					CL_MAP_READ | CL_MAP_WRITE, 0, sizeof(cl_int)*(current_nwg),
-						0, NULL, &read_evt_lt, &err) ; 
-		ocl_check(err, "read buffer lt") ; 
-
-		gt_cpu = clEnqueueMapBuffer(resources->que, m.gt, CL_TRUE,
-					CL_MAP_READ | CL_MAP_WRITE, 0, sizeof(cl_int)*(current_nwg),
-						0, NULL, &read_evt_gt, &err);
-		ocl_check(err, "read buffer gt");
-
-		scan(lt_cpu, current_nwg) ; 
-		scan(gt_cpu, current_nwg) ; 
-
-		const int sum_lt = lt_cpu[current_nwg - 1] ;
-		const int sum_gt = gt_cpu[current_nwg - 1] ; 
-
-		cl_event unmap_evt_lt;
-		err = clEnqueueUnmapMemObject(resources->que, m.lt, lt_cpu,
-					1, &read_evt_lt, &unmap_evt_lt);
-		ocl_check(err, "unmap lt");
-
-		cl_event unmap_evt_gt;
-		err = clEnqueueUnmapMemObject(resources->que, m.gt, gt_cpu,
-					1, &read_evt_gt, &unmap_evt_gt);
-		ocl_check(err, "unmap gt");
-
 		cl_event scan_evt[3] ; 
 
 		scan_evt[0] = scan_seq(resources->que, &k, &m,  m.bit_map_sup, m.bit_map_inf, current_nels, lws, current_nwg) ;
@@ -442,9 +403,50 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 
 		clWaitForEvents(3, scan_evt) ; 
 
-		cl_event partition_evt = partition(resources->que, &k,  &m, lt_cpu[current_nwg - 1], gt_cpu[current_nwg -1], curr_seq, current_nels, lws, current_nwg) ; 
+		cl_event read_evt_lt ;
+		cl_event read_evt_gt ; 
+		cl_event read_evt_last_value ; 
+  
+		int* lt = NULL ;
+		int* gt = NULL ; 
+		float* last_value =  NULL ; 
+		
+		lt = clEnqueueMapBuffer(resources->que, m.bit_map_inf, CL_TRUE,
+					CL_MAP_READ | CL_MAP_WRITE, (current_nels - 1)*sizeof(cl_int), sizeof(cl_int),
+						0, NULL, &read_evt_lt, &err) ; 
+		ocl_check(err, "read buffer lt") ; 
+
+		last_value = clEnqueueMapBuffer(resources->que, m.in, CL_TRUE,
+					CL_MAP_READ | CL_MAP_WRITE,  (curr_seq.sstart +current_nels - 1)*sizeof(cl_float), sizeof(cl_float),
+						0, NULL, &read_evt_last_value, &err) ; 
+		ocl_check(err, "read buffer lt") ; 
+
+		gt = clEnqueueMapBuffer(resources->que, m.bit_map_sup, CL_TRUE,
+					CL_MAP_READ | CL_MAP_WRITE, (current_nels - 1)*sizeof(cl_int), sizeof(cl_int),
+						0, NULL, &read_evt_gt, &err);
+		ocl_check(err, "read buffer gt");
+
+		const int sum_lt = (*last_value >= curr_seq.pivot_value) ? *lt : *lt +1 ; 
+		const int sum_gt = (*last_value <= curr_seq.pivot_value) ? *gt : *gt +1  ; 
+
+		cl_event unmap_evt_lt;
+		err = clEnqueueUnmapMemObject(resources->que, m.bit_map_inf, lt,
+					1, &read_evt_lt, &unmap_evt_lt);
+		ocl_check(err, "unmap lt");
+
+		cl_event unmap_evt_gt;
+		err = clEnqueueUnmapMemObject(resources->que, m.bit_map_sup, gt,
+					1, &read_evt_gt, &unmap_evt_gt);
+		ocl_check(err, "unmap gt");
+
+		cl_event unmap_evt_last_value;
+		err = clEnqueueUnmapMemObject(resources->que, m.in, last_value,
+					1, &read_evt_last_value, &unmap_evt_last_value);
+		ocl_check(err, "unmap gt");
+
+		cl_event partition_evt = partition(resources->que, &k,  &m, sum_lt, sum_gt, curr_seq, current_nels, lws, current_nwg) ; 
 		clWaitForEvents(1, &partition_evt) ;
-		cl_event partition_copy_evt = partition_copy(resources->que, &k, &m, lt_cpu[current_nwg - 1], gt_cpu[current_nwg -1], curr_seq, current_nels, lws, current_nwg) ;
+		cl_event partition_copy_evt = partition_copy(resources->que, &k, &m, curr_seq, current_nels, lws, current_nwg) ;
 		clWaitForEvents(1, &partition_copy_evt) ; 
 
 		sequence s1, s2 ; 
