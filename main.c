@@ -65,7 +65,7 @@ int main(int argc, char* const* argv){
 		}
 	}
 
-	cl_int err , ncu = 0, nwg_cu = 4; 
+	cl_int err , ncu = 0, nwg_cu = 512; 
 	size_t lws = 512 ;  
 
 	cl_resources resource ; 
