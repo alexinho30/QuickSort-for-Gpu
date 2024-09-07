@@ -132,6 +132,7 @@ global int* restrict tails_sup, global int* restrict tails_inf){
 
     const int li = get_local_id(0) ; 
 
+    #pragma unroll
     for(int j=start + li; j < end ; j+=get_local_size(0)){
         bit_map_sup[j] += corr_sup ; 
         bit_map_inf[j] += corr_inf ; 
@@ -161,6 +162,8 @@ global const int* restrict bit_map_sup, global const int* restrict bit_map_inf, 
     }
 
     if(get_group_id(0) == 0 && get_local_id(0) == 0){
+
+    #pragma unroll
         for(int j = sstart + lt ; j < send - gt + 1; j++){
             out[j]= pivot_value ; 
         }
@@ -171,6 +174,7 @@ kernel void partition_copy(const int nels, const int sstart, global float* restr
 
     int i =  get_global_id(0) ; 
 
+    #pragma unroll
     while(i < nels){
         float v = out[i + sstart] ; 
         in[i + sstart] = v ; 

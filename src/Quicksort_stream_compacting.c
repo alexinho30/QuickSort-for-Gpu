@@ -209,9 +209,9 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 	ocl_check(err, "create buffer lt");
 	m.gt = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, (nwg)*sizeof(cl_int), NULL, &err);
 	ocl_check(err, "create buffer gt"); 
-	m.bit_map_sup = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR , nels*sizeof(cl_int), NULL, &err);
+	m.bit_map_sup = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR , round_mul_up(nels, 4)*sizeof(cl_int), NULL, &err);
 	ocl_check(err, "create buffer bit map sup");
-	m.bit_map_inf = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR , nels*sizeof(cl_int), NULL, &err);
+	m.bit_map_inf = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR , round_mul_up(nels, 4)*sizeof(cl_int), NULL, &err);
 	ocl_check(err, "create buffer bit map inf");
 	m.tails_inf = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR , nwg*sizeof(cl_int), NULL, &err);
 	ocl_check(err, "create buffer bit map inf");
@@ -233,25 +233,31 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 
 		sequence curr_seq = dequeue(&sequences_to_partion) ; 
 		const int current_nels = curr_seq.send - curr_seq.sstart + 1 ;
-		int current_nwg = nwg ;
 
-		while(current_nwg*lws > current_nels){
-			current_nwg /= 2 ; 
+		int current_nwg_scan = nwg ;
+		int current_nwg_split_partion = nwg ; 
+
+		if(current_nwg_split_partion*lws > current_nels){
+			current_nwg_split_partion = current_nels/lws ;  
 		}
 
-		if(!current_nwg) current_nwg++ ; 
+		if(current_nwg_scan*lws*4 > current_nels){
+			current_nwg_scan = current_nels /(4*lws);  
+			
+		}
+		
+		if(!current_nwg_scan) current_nwg_scan++ ; 
+		if(!current_nwg_split_partion) current_nwg_split_partion++ ; 
 
-        cl_event evt_split_elements = split_elements(resources->que, &k, &m, current_nels, curr_seq.sstart, lws, curr_seq.pivot_value, current_nwg) ; 
+        cl_event evt_split_elements = split_elements(resources->que, &k, &m, current_nels, curr_seq.sstart, lws, curr_seq.pivot_value, current_nwg_split_partion) ; 
 
 		clWaitForEvents(1, &evt_split_elements) ;
 
-		
-
 		cl_event scan_evt[3] ; 
 
-		scan_evt[0] = scan_seq(resources->que, &k, &m,  m.bit_map_sup, m.bit_map_inf, round_mul_up(current_nels, 4), lws, current_nwg) ;
-		scan_evt[1] = scan_seq(resources->que, &k, &m, m.tails_sup, m.tails_inf, round_mul_up(current_nwg, 4), lws, 1) ;
-		scan_evt[2] = scan_seq_update(resources->que, &k, &m, round_mul_up(current_nels, 4), lws, current_nwg - 1) ;
+		scan_evt[0] = scan_seq(resources->que, &k, &m,  m.bit_map_sup, m.bit_map_inf, round_mul_up(current_nels, 4), lws, current_nwg_scan) ;
+		scan_evt[1] = scan_seq(resources->que, &k, &m, m.tails_sup, m.tails_inf, round_mul_up(current_nwg_scan, 4), lws, 1) ;
+		scan_evt[2] = scan_seq_update(resources->que, &k, &m, round_mul_up(current_nels, 4), lws, current_nwg_scan - 1) ;
 
 		clWaitForEvents(3, scan_evt) ; 
 
@@ -296,10 +302,10 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 					1, &read_evt_last_value, &unmap_evt_last_value);
 		ocl_check(err, "unmap gt");
 
-		cl_event partition_evt = partition(resources->que, &k,  &m, sum_lt, sum_gt, curr_seq, current_nels, lws, current_nwg) ; 
+		cl_event partition_evt = partition(resources->que, &k,  &m, sum_lt, sum_gt, curr_seq, current_nels, lws, current_nwg_split_partion) ; 
 		clWaitForEvents(1, &partition_evt) ;
 
-		cl_event partition_copy_evt = partition_copy(resources->que, &k, &m, curr_seq.sstart, current_nels, lws, current_nwg) ;
+		cl_event partition_copy_evt = partition_copy(resources->que, &k, &m, curr_seq.sstart, current_nels, lws, current_nwg_split_partion) ;
 		clWaitForEvents(1, &partition_copy_evt) ; 
 
 		sequence s1, s2 ; 
@@ -321,7 +327,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		const int s1_dim = s1.send - s1.sstart + 1 ; 
 		const int s2_dim = s2.send - s2.sstart + 1 ;
 
-		if((s1_dim > 2*lws)){
+		if((s1_dim > 2)){
 			const int pivot_index = random_uniform_value(0, s1_dim - 1) + s1.sstart; 
 
 			#if 1
@@ -365,7 +371,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 			ocl_check(err, "unmap buffer out");
 		}
 
-		if((s2_dim > 2*lws)){
+		if((s2_dim > 2)){
 			const int pivot_index = random_uniform_value(0, s2_dim - 1) + s2.sstart; 
 
 			#if 1
@@ -417,14 +423,15 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 			t[iteration].partition_time = runtime_ns(partition_evt) ; 
 			t[iteration].partition_copy_time = runtime_ns(partition_copy_evt) ; 
 			s[iteration].current_nels = current_nels ; 
-			s[iteration].current_nwg = current_nwg ; 
+			s[iteration].current_nwg = current_nwg_split_partion ; 
 			iteration++; 
 		}
     }  
 
 	quicksort_gpu_end = clock() ; 
 	time_used_gpu = ((double)(quicksort_gpu_end - quicksort_gpu_start))/CLOCKS_PER_SEC ; 
-	printf("total time :  %f\n", time_used_gpu) ; 
+	printf("total time :  %f\n", time_used_gpu) ;
+	fflush(stdout) ;  
 
 	cl_event read_out_evt ; 
 	cl_event unmap_out_evt ; 
