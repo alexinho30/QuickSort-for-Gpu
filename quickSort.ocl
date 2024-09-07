@@ -1,26 +1,18 @@
 kernel void split_elements(const int nels, const int sstart, global const float * restrict in,  
-const float pivot, global int * restrict lt, global int * restrict gt,  
-global int* bit_array_sup, global int* bit_array_inf,
+const float pivot, global int* bit_array_sup, global int* bit_array_inf,
 local int * restrict arr_inf, local int* restrict arr_sup
 ){
     int i = get_global_id(0) ; 
-    const int li = get_local_id(0) ; 
-    const int gi = get_group_id(0) ;
     const int gs = get_global_size(0) ;  
-
-    int v_sup = 0 ;
-    int v_inf = 0 ;
 
     while(i < nels){
         float v = in[sstart + i] ;
 
         if(v < pivot){
-            v_inf++ ;  
             bit_array_inf[i] = 1 ;
             bit_array_sup[i] = 0 ;  
         }
         else if(v > pivot){
-            v_sup++ ;  
             bit_array_sup[i] = 1 ;
             bit_array_inf[i] = 0 ;  
         } 
@@ -28,29 +20,7 @@ local int * restrict arr_inf, local int* restrict arr_sup
             bit_array_sup[i] = 0 ; 
             bit_array_inf[i] = 0 ;  
         }
-
         i += gs ;
-    }
-
-    arr_sup[li] = v_sup ; 
-    arr_inf[li] = v_inf ; 
-
-    int active = get_local_size(0)/2 ; 
-    
-    while(active > 0){
-        barrier(CLK_LOCAL_MEM_FENCE);
-        if(li < active){
-            v_sup += arr_sup[li + active] ; 
-            v_inf += arr_inf[li + active] ; 
-            arr_sup[li] = v_sup ; 
-            arr_inf[li] = v_inf ; 
-        }
-        active/=2 ; 
-    }
-
-    if(li == 0){
-        lt[gi] = v_inf ; 
-        gt[gi] = v_sup ; 
     }
 }
 
@@ -143,8 +113,8 @@ global int* restrict tails_sup, global int* restrict tails_inf){
     } 
 }
 
-kernel void partition_buff_tmp(const int nels, const int sstart, const float pivot_value, global float* restrict in, global float* restrict out, 
-global const int* restrict bit_map_sup, global const int* restrict bit_map_inf, const int lt, const int gt){
+kernel void partition_buff_tmp(const int nels, const int sstart, const float pivot_value, const int lt, const int gt, global float* restrict in, global float* restrict out, 
+global const int* restrict bit_map_sup, global const int* restrict bit_map_inf){
 
    int i = get_global_id(0) ; 
    const int send = sstart + nels - 1 ; 
@@ -181,5 +151,4 @@ kernel void partition_copy(const int nels, const int sstart, global float* restr
         in[i + sstart] = v ; 
         i+=get_global_size(0) ; 
     }  
-
 }
