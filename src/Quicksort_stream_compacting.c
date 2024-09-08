@@ -228,9 +228,11 @@ float median_computation(cl_command_queue que, kernels* k, device_memeory*m, int
 						1, &read_pivot_evt, &unmap_pivot_evt);
 		ocl_check(err, "unmap pivot");
 
-		while(current_nwg*lws > current_nels){
-			current_nwg/=2 ; 
+		if(current_nwg*lws > current_nels){
+			current_nwg = current_nels/lws ; 
 		} 
+
+		if(!current_nwg) current_nwg++ ; 
 
 		sequence curr_seq ; 
 		curr_seq.sstart = sstart ; 
@@ -385,9 +387,9 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		const int current_nels = curr_seq.send - curr_seq.sstart + 1 ;
 		int current_nwg = nwg ;
 
-		while(current_nwg*lws > current_nels){
-			current_nwg /= 2 ; 
-		}
+		if(current_nwg*lws > current_nels){
+			current_nwg = current_nels/lws ; 
+		} 
 
 		if(!current_nwg) current_nwg++ ; 
 
@@ -468,7 +470,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		const int s1_dim = s1.send - s1.sstart + 1 ; 
 		const int s2_dim = s2.send - s2.sstart + 1 ;
 
-		if((s1_dim > 2*lws)){
+		if((s1_dim > 2)){
 			s1.pivot_value = median_computation(resources->que, &k, &m, s1.sstart, s1.send, lws, nwg) ; 
 
 			enqueue(&sequences_to_partion, &s1) ; 
@@ -490,7 +492,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 			ocl_check(err, "unmap buffer out");
 		}
 
-		if((s2_dim > 2*lws)){
+		if((s2_dim > 2)){
 
 			s2.pivot_value = median_computation(resources->que, &k, &m, s2.sstart, s2.send, lws, nwg) ; 
  

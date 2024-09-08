@@ -65,14 +65,11 @@ int main(int argc, char* const* argv){
 		}
 	}
 
-	cl_int err , ncu = 0, nwg_cu = 2; 
-	size_t lws ;  
+	cl_int err , ncu = 0, nwg_cu = 4; 
+	size_t lws = 512;  
 
 	cl_resources resource ; 
 	create_resources(&resource, "quickSort.ocl") ; 
-
-	err = clGetDeviceInfo(resource.d, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(lws), &lws, NULL);
-	printf("lws: %ld\n", lws);
 
 	err = clGetDeviceInfo(resource.d, CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(ncu), &ncu, NULL);
 	cl_uint nwg = ncu*nwg_cu;
