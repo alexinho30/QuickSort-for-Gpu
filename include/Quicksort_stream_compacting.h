@@ -6,7 +6,7 @@
 #include "../include/quicksort_cpu_version.h"
 #include "../include/random_numbers.h"
 
-#define MAX_NUM_SEQ 300000
+#define MAX_NUM_SEQ 30000000
 
 #include<stdio.h>
 #include<unistd.h>

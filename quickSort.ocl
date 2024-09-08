@@ -1,6 +1,5 @@
 kernel void split_elements(const int nels, const int sstart, global const float * restrict in,  
-const float pivot, global int* bit_array_sup, global int* bit_array_inf,
-local int * restrict arr_inf, local int* restrict arr_sup
+const float pivot, global int* bit_array_sup, global int* bit_array_inf
 ){
     int i = get_global_id(0) ; 
     const int gs = get_global_size(0) ;  

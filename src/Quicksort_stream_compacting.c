@@ -27,13 +27,8 @@ cl_event split_elements(cl_command_queue q, kernels* k, device_memeory* m , cl_i
 	err = clSetKernelArg(k->splitting_elements, 5, sizeof(m->bit_map_inf), &m->bit_map_inf) ;
 	ocl_check(err, "set kernel bit_array_inf") ;
 
-	err = clSetKernelArg(k->splitting_elements, 6, sizeof(cl_int)*lws[0], NULL) ;
-	ocl_check(err, "set kernel local mem inf") ;
-
-	err = clSetKernelArg(k->splitting_elements, 7, sizeof(cl_int)*lws[0], NULL) ;
-	ocl_check(err, "set kernel local mem sup") ;
-
 	err = clEnqueueNDRangeKernel(q, k->splitting_elements, 1, NULL, gws, lws, 0, NULL, &evt_split_elements) ;
+	
     ocl_check(err, "enqueue split elements kernel") ; 
 
     return evt_split_elements;
@@ -233,10 +228,13 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 
 		sequence curr_seq = dequeue(&sequences_to_partion) ; 
 		const int current_nels = curr_seq.send - curr_seq.sstart + 1 ;
+		/*if(current_nels < 0){
+			printf("current_nels : %d current_sstart : %d current_send : %d\n", current_nels, curr_seq.sstart, curr_seq.send) ; 
+		}*/
 		int current_nwg = nwg ;
 
-		while(current_nwg*lws > current_nels){
-			current_nwg /= 2 ; 
+		if(current_nwg*lws > current_nels){
+			current_nwg = current_nels/lws ;  
 		}
 
 		if(!current_nwg) current_nwg++ ; 
@@ -296,8 +294,6 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 					1, &read_evt_last_value, &unmap_evt_last_value);
 		ocl_check(err, "unmap gt");
 
-		//printf("sum lt : %d sumg gt : %d\n", sum_lt, sum_gt) ; 
-
 		cl_event partition_evt = partition(resources->que, &k,  &m, curr_seq, current_nels, sum_lt, sum_gt, lws, current_nwg) ; 
 		clWaitForEvents(1, &partition_evt) ;
 		cl_event partition_copy_evt = partition_copy(resources->que, &k, &m, curr_seq, current_nels, lws, current_nwg) ;
@@ -322,7 +318,12 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		const int s1_dim = s1.send - s1.sstart + 1 ; 
 		const int s2_dim = s2.send - s2.sstart + 1 ;
 
-		if((s1_dim > 2*lws)){
+		if(s1.send == 0 || s2.send == 0){
+			printf("s1_dim : %d s2_dim : %d", s1_dim, s2_dim) ; 
+			//exit(1) ; 
+		}
+
+		if((s1_dim > 2)){
 			const int pivot_index = random_uniform_value(0, s1_dim - 1) + s1.sstart; 
 
 			#if 1
@@ -367,7 +368,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 			ocl_check(err, "unmap s1 sequence");
 		}
 
-		if((s2_dim > 2*lws)){
+		if((s2_dim > 2)){
 			const int pivot_index = random_uniform_value(0, s2_dim - 1) + s2.sstart; 
 
 			#if 1
