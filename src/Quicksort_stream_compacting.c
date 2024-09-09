@@ -247,8 +247,8 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		const int current_nels = curr_seq.send - curr_seq.sstart + 1 ;
 		int current_nwg = nwg ;
 
-		while(current_nwg*lws*4 > current_nels){
-			current_nwg /= 2 ; 
+		if(current_nwg*lws*4 > current_nels){
+			current_nwg = current_nels/(4*lws) ; 
 		}
 
 		if(!current_nwg) current_nwg++ ; 
@@ -333,7 +333,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		const int s1_dim = s1.send - s1.sstart + 1 ; 
 		const int s2_dim = s2.send - s2.sstart + 1 ;
 
-		if((s1_dim > 2*lws)){
+		if((s1_dim > 2)){
 			cl_event read_s1_evt ; 
 			cl_event unmap_s1_evt ; 
 			float* s1_arr = NULL;
@@ -368,7 +368,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 			ocl_check(err, "unmap buffer out");
 		}
 
-		if((s2_dim > 2*lws)){
+		if((s2_dim > 2)){
 
 			cl_event read_s2_evt ; 
 			cl_event unmap_s2_evt ; 

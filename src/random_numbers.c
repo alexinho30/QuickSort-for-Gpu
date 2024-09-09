@@ -34,12 +34,12 @@ float random_uniform_zero_one(){
     return  ((double)(rand()) + 1. )/( (double)(RAND_MAX) + 1. );
 }
 
-int binomial_distribution_value(const int n, const float p){
+float binomial_distribution_value(const int n, const float p){
 
-    int binom_value = 0 ; 
+    float binom_value = 0 ; 
 
     for(int i = 0 ; i < n ; i++){
-        int r = random_uniform_zero_one() ; 
+        float r = random_uniform_zero_one() ; 
         if(r < p){
             binom_value++ ; 
         }
