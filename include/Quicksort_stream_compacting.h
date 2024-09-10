@@ -7,6 +7,8 @@
 #include "../include/random_numbers.h"
 
 #define MAX_NUM_SEQ 30000000
+#define IBRID_VERSION 300000
+#define ONLY_GPU 2 
 
 #include<stdio.h>
 #include<unistd.h>

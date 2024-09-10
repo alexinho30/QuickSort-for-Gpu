@@ -320,10 +320,14 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 
 		if(s1.send == 0 || s2.send == 0){
 			printf("s1_dim : %d s2_dim : %d", s1_dim, s2_dim) ; 
-			//exit(1) ; 
 		}
 
-		if((s1_dim > 2)){
+		/*
+			ibrid version soglia 300k
+			only gpu soglia 2 
+		*/
+
+		if((s1_dim > IBRID_VERSION)){
 			const int pivot_index = random_uniform_value(0, s1_dim - 1) + s1.sstart; 
 
 			#if 1
@@ -368,7 +372,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 			ocl_check(err, "unmap s1 sequence");
 		}
 
-		if((s2_dim > 2)){
+		if((s2_dim > IBRID_VERSION)){
 			const int pivot_index = random_uniform_value(0, s2_dim - 1) + s2.sstart; 
 
 			#if 1
@@ -394,7 +398,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
  
 			enqueue(&sequences_to_partion, &s2) ;
 		}
-		else if(s2_dim > 1){
+		else if(s2_dim >1){
 			cl_event read_s2_evt ; 
 			cl_event unmap_s2_evt ; 
 			float* s2_arr = NULL;
