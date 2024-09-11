@@ -297,6 +297,7 @@ float median_computation(cl_command_queue que, kernels* k, device_memeory*m, int
 		cl_event partition_copy_evt = partition_copy(que, k, m, curr_seq, current_nels, lws, current_nwg) ;
 		clWaitForEvents(1, &partition_copy_evt) ; 
 		
+		/*could be multiple pivot values so we have to check everyone*/
 		for(int idx_pivot = curr_seq.sstart + sum_lt ; idx_pivot < curr_seq.send - sum_gt ; idx_pivot++){
 			const int pivot_statistic = idx_pivot + 1 ;  
 
