@@ -9,7 +9,7 @@ int main(int argc, char* const* argv){
 	char in_file[BUFSIZE], out_file[BUFSIZE] ; 
 	int opt, d = 1, nels = 10000, seed = 21 ; 
 	float p1, p2 ;  
-	bool test_mode ; 
+	bool test_mode = false; 
 
 	while((opt = getopt(argc, argv, ":i:o:tn:s:d:p:r:")) != -1){
 		switch(opt){

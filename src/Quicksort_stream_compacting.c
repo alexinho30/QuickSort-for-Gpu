@@ -327,7 +327,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 			only gpu soglia 2 
 		*/
 
-		if((s1_dim > IBRID_VERSION)){
+		if((s1_dim > 2)){
 			const int pivot_index = random_uniform_value(0, s1_dim - 1) + s1.sstart; 
 
 			#if 1
@@ -372,7 +372,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 			ocl_check(err, "unmap s1 sequence");
 		}
 
-		if((s2_dim > IBRID_VERSION)){
+		if((s2_dim > 2)){
 			const int pivot_index = random_uniform_value(0, s2_dim - 1) + s2.sstart; 
 
 			#if 1
@@ -467,7 +467,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 	}
 	else{
 		out_copy =  calloc(nels, sizeof(float)) ;
-		copy_vec(vec, out_copy, 0, nels - 1) ; 
+		copy_vec(out, out_copy, 0, nels - 1) ; 
 	}
 
 	err = clEnqueueUnmapMemObject(resources->que, m.in, out,
