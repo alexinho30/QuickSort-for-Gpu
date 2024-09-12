@@ -5,6 +5,8 @@
 #include <stdbool.h>
 #include "../include/quicksort_cpu_version.h"
 #define MAX_NUM_SEQ 30000000
+#define IBRID_VERSION 300000
+#define ONLY_GPU_VERSION 2
 #define TEST 1
 
 #include<stdio.h>

@@ -327,7 +327,8 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		const int s1_dim = s1.send - s1.sstart + 1 ; 
 		const int s2_dim = s2.send - s2.sstart + 1 ;
 
-		if((s1_dim > 2)){
+		// alternative ONLY_GPU_VERSION 
+		if((s1_dim > IBRID_VERSION)){
 			const int pivot_index = random_uniform_value(0, s1_dim - 1) + s1.sstart; 
 
 			#if 1
@@ -370,8 +371,8 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 					1, &read_s1_evt, &unmap_s1_evt);
 			ocl_check(err, "unmap buffer out");
 		}
-
-		if((s2_dim > 2)){
+		// alternative ONLY_GPU_VERSION 
+		if((s2_dim > IBRID_VERSION)){
 			const int pivot_index = random_uniform_value(0, s2_dim - 1) + s2.sstart; 
 
 			#if 1
