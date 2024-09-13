@@ -469,7 +469,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 	}
 	else{
 		out_copy =  calloc(nels, sizeof(float)) ;
-		copy_vec(vec, out_copy, 0, nels - 1) ; 
+		copy_vec(out, out_copy, 0, nels - 1) ; 
 	}
 
 	err = clEnqueueUnmapMemObject(resources->que, m.in, out,
