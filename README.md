@@ -16,16 +16,16 @@ if you want to test the algorithm with random data use
 -t means that you are using test mode so write it 
 
 -d distribution you want to use 
-    1 normal distribution
-    2 binomial distribution 
-    3 uniform distribution
+    [1 normal distribution]
+    [2 binomial distribution] 
+    [3 uniform distribution]
 
--p first parameter \\
-    lower element for uniform distribution \\
-    number of tests for binomial \\
-    mean for normal distribution \\
+-p first parameter 
+    [lower element for uniform distribution]
+    [number of tests for binomial]
+    [mean for normal distribution]
 
--r second parameter \\
-    greater element for uniform distribution \\
-    probability for binomial distribution \\
-    standard deviation for normal distribution \\
+-r second parameter 
+    [greater element for uniform distribution]
+    [probability for binomial distribution]
+    [standard deviation for normal distribution]
