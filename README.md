@@ -1,7 +1,7 @@
 # Quicksort-gpu
 An implemenation of quicksort algorithm on gpu using opencl
 
-# use
+# usage
 
 to compile use make 
 
