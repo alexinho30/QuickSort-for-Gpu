@@ -22,7 +22,7 @@ if you want to test the algorithm with random data use
 
 -p first parameter 
     [lower element for uniform distribution]
-    [number of tests for binomial]
+    [number of tests for binomial distribution]
     [mean for normal distribution]
 
 -r second parameter 
