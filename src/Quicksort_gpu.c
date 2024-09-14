@@ -194,7 +194,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 	ocl_check(err, "create kernel scan");
 	k.scan_update = clCreateKernel(resources->prog, "scan_update", &err);	
 	ocl_check(err, "create kernel scan_update");
-	k.partitioning = clCreateKernel(resources->prog, "partition_buff_tmp", &err);	
+	k.partitioning = clCreateKernel(resources->prog, "partition", &err);	
 	ocl_check(err, "create kernel partition_buff_tmp");
 	k.partitioning_copy = clCreateKernel(resources->prog, "partition_copy", &err);	
 	ocl_check(err, "create kernel partition_buff_tmp");
@@ -327,8 +327,11 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		const int s1_dim = s1.send - s1.sstart + 1 ; 
 		const int s2_dim = s2.send - s2.sstart + 1 ;
 
-		// alternative ONLY_GPU_VERSION 
-		if((s1_dim > IBRID_VERSION)){
+		/** 
+		 * IBRID_VERSION 300000
+		 * ONLY_GPU 2
+		*/
+		if((s1_dim > ONLY_GPU_VERSION)){
 			const int pivot_index = random_uniform_value(0, s1_dim - 1) + s1.sstart; 
 
 			#if 1
@@ -372,7 +375,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 			ocl_check(err, "unmap buffer out");
 		}
 		// alternative ONLY_GPU_VERSION 
-		if((s2_dim > IBRID_VERSION)){
+		if((s2_dim > ONLY_GPU_VERSION)){
 			const int pivot_index = random_uniform_value(0, s2_dim - 1) + s2.sstart; 
 
 			#if 1
