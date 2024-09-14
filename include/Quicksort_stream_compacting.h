@@ -1,5 +1,5 @@
-#ifndef QUICKSORT_STREAM_COMPACTING_H
-#define QUICKSORT_STREAM_COMPACTING_H
+#ifndef QUICKSORT_GPU_H
+#define QUICKSORT_GPU_H
 
 #include<math.h>
 #include <stdbool.h>
