@@ -206,7 +206,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 	ocl_check(err, "create kernel scan");
 	k.scan_update = clCreateKernel(resources->prog, "scan_update", &err);	
 	ocl_check(err, "create kernel scan_update");
-	k.partitioning = clCreateKernel(resources->prog, "partition_buff_tmp", &err);	
+	k.partitioning = clCreateKernel(resources->prog, "partition", &err);	
 	ocl_check(err, "create kernel partition_buff_tmp");
 	k.partitioning_copy = clCreateKernel(resources->prog, "partition_copy", &err);	
 	ocl_check(err, "create kernel partition_buff_tmp");
