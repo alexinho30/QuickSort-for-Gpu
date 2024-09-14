@@ -28,7 +28,7 @@ Quicksort-gpu
 #### Requirements
 - [POSIX]
 - [gcc]
-- [Opnecl]
+- [Opencl]
 
 ## usage
 
