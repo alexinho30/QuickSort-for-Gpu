@@ -1,4 +1,4 @@
-#include "include/Quicksort_stream_compacting.h"
+#include "include/Quicksort_gpu.h"
 #include "include/boiler.h"
 #include "include/quicksort_cpu_version.h"
 #include "include/random_numbers.h"
