@@ -1,4 +1,4 @@
-#include "../include/Quicksort_stream_compacting.h"
+#include "../include/Quicksort_gpu.h"
 
 
 cl_event split_elements(cl_command_queue q, kernels* k, device_memeory* m , cl_int nels, cl_int sstart,
