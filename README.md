@@ -1,8 +1,38 @@
 # Quicksort-gpu
 An implemenation of quicksort algorithm on gpu using opencl
 
-# usage
+## structure of the project 
 
+```bash
+Quicksort-gpu
+├── README.md
+├── quicksort.ocl
+├── Makefile
+├── main.c
+├── src
+│   ├── boiler.c
+│   ├── queue.c
+│   ├── quicksort_cpu_version.c
+│   ├── random_numbers.c
+│   ├── utility.c
+│   ├── quicksort_gpu.c
+├── include
+│   ├── boiler.h
+│   ├── queue.h
+│   ├── quicksort_cpu_version.h
+│   ├── random_numbers.h
+│   ├── utility.h
+│   ├── quicksort_gpu.h
+```
+
+#### Requirements
+- [POSIX]
+- [gcc]
+- [Opencl]
+
+## usage
+
+```bash
 to compile use make 
 
 if you want to order your own array use
@@ -29,3 +59,4 @@ if you want to test the algorithm with random data use
     [greater element for uniform distribution]
     [probability for binomial distribution]
     [standard deviation for normal distribution]
+```
