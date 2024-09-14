@@ -25,10 +25,10 @@ Quicksort-gpu
 │   ├── quicksort_gpu.h
 ```
 
-## requirements
--[posix]
--[gcc]
--[Opnecl]
+#### Requirements
+- [POSIX]
+- [gcc]
+- [Opnecl]
 
 ## usage
 
