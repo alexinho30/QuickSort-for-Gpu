@@ -112,7 +112,7 @@ global int* restrict tails_sup, global int* restrict tails_inf){
     } 
 }
 
-kernel void partition_buff_tmp(const int nels, const int sstart, const float pivot_value, const int lt, const int gt, global float* restrict in, global float* restrict out, 
+kernel void partition(const int nels, const int sstart, const float pivot_value, const int lt, const int gt, global float* restrict in, global float* restrict out, 
 global const int* restrict bit_map_sup, global const int* restrict bit_map_inf){
 
    int i = get_global_id(0) ; 

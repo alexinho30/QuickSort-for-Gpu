@@ -193,7 +193,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 	ocl_check(err, "create kernel scan");
 	k.scan_update = clCreateKernel(resources->prog, "scan_update", &err);	
 	ocl_check(err, "create kernel scan_update");
-	k.partitioning = clCreateKernel(resources->prog, "partition_buff_tmp", &err);	
+	k.partitioning = clCreateKernel(resources->prog, "partition", &err);	
 	ocl_check(err, "create kernel partition_buff_tmp");
 	k.partitioning_copy = clCreateKernel(resources->prog, "partition_copy", &err);	
 	ocl_check(err, "create kernel partition_buff_tmp");
@@ -323,11 +323,11 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		}
 
 		/*
-			ibrid version soglia 300k
-			only gpu soglia 2 
+			IBRID_VERSION soglia 300k
+			ONLY_GPU soglia 2 
 		*/
 
-		if((s1_dim > 2)){
+		if((s1_dim > ONLY_GPU)){
 			const int pivot_index = random_uniform_value(0, s1_dim - 1) + s1.sstart; 
 
 			#if 1
@@ -372,7 +372,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 			ocl_check(err, "unmap s1 sequence");
 		}
 
-		if((s2_dim > 2)){
+		if((s2_dim > ONLY_GPU)){
 			const int pivot_index = random_uniform_value(0, s2_dim - 1) + s2.sstart; 
 
 			#if 1
