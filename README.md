@@ -62,4 +62,7 @@ if you want to test the algorithm with random data use
     [greater element for uniform distribution]
     [probability for binomial distribution]
     [standard deviation for normal distribution]
+Also you can choose to use an ibrid version or only gpu version changing the threshold in the quicksort_gpu.c file .
+At the end in the test directory you'll find a file named benchmark with some statistics.  
+
 ```
