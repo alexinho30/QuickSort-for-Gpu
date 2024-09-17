@@ -181,18 +181,23 @@ float median_computation(cl_command_queue que, kernels* k, device_memeory*m, int
 
 	int median  = 0; 
 	if((send - sstart + 1 ) & 1){
-		median = (send - sstart + 1)/2 ; 
+		median = ((send - sstart + 1)/2) + sstart ; 
 	}
 	else{
-		median = (send - sstart + 1)/2 - 1; 
-	}
+		median = ((send - sstart + 1)/2- 1) + sstart; 
+	} 
 
 	while(!pivot_found){
 
 		const int current_nels = send - sstart + 1 ; 
 		int current_nwg = nwg ;
 
-		if(current_nels <= lws){
+		/**
+		 * IBRID_VERSION 300000
+		 * lws 512 for my gpu
+		 */
+	
+		if(current_nels <= IBRID_VERSION){
 			cl_event read_seq_evt ; 
 			cl_event unmap_seq_evt ; 
 			float* seq = NULL; 	
@@ -208,7 +213,9 @@ float median_computation(cl_command_queue que, kernels* k, device_memeory*m, int
 						1, &read_seq_evt, &unmap_seq_evt);
 			ocl_check(err, "unmap seq");
 
-			return seq[median - 1] ;
+			const float pivot = seq[median - sstart] ; 
+
+			return pivot ;
 		}
 
 		const int pivot_pos = rand()%(send - sstart) + sstart ; 
@@ -298,10 +305,8 @@ float median_computation(cl_command_queue que, kernels* k, device_memeory*m, int
 		clWaitForEvents(1, &partition_copy_evt) ; 
 		
 		/*could be multiple pivot values so we have to check everyone*/
-		for(int idx_pivot = curr_seq.sstart + sum_lt ; idx_pivot < curr_seq.send - sum_gt ; idx_pivot++){
-			const int pivot_statistic = idx_pivot + 1 ;  
-
-			if(pivot_statistic == median){
+		for(int idx_pivot = curr_seq.sstart + sum_lt ; idx_pivot <= curr_seq.send - sum_gt ; idx_pivot++){ 
+			if(idx_pivot == median){
 				pivot_found = true ; 
 				break ; 
 			}
@@ -310,13 +315,14 @@ float median_computation(cl_command_queue que, kernels* k, device_memeory*m, int
 			break ;
 		}
 		else{
-			if(median < curr_seq.sstart + sum_lt + 1){
+			if(median < sstart + sum_lt){
 				send = sstart + sum_lt - 1 ; 
 			}
 			else{
 				sstart = send - sum_gt + 1 ; 
 			} 
 		}
+	
 	}
 
 	return pivot ; 
@@ -471,8 +477,13 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		const int s1_dim = s1.send - s1.sstart + 1 ; 
 		const int s2_dim = s2.send - s2.sstart + 1 ;
 
-		if((s1_dim > 2)){
-			s1.pivot_value = median_computation(resources->que, &k, &m, s1.sstart, s1.send, lws, nwg) ; 
+		/**
+		 * IBRID_VERSION 300000
+		 * ONLY_GPU 2
+		 */
+
+		if((s1_dim > IBRID_VERSION)){
+			s1.pivot_value = median_computation(resources->que, &k, &m, s1.sstart, s1.send, lws, nwg) ;
 
 			enqueue(&sequences_to_partion, &s1) ; 
 		}
@@ -493,9 +504,13 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 			ocl_check(err, "unmap buffer out");
 		}
 
-		if((s2_dim > 2)){
+		if((s2_dim > IBRID_VERSION)){
 
 			s2.pivot_value = median_computation(resources->que, &k, &m, s2.sstart, s2.send, lws, nwg) ; 
+
+			cl_event read_seq_evt ; 
+			cl_event unmap_seq_evt ; 
+			float* seq = NULL; 	
  
 			enqueue(&sequences_to_partion, &s2) ;
 		}
@@ -527,11 +542,12 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 			s[iteration].current_nwg = current_nwg ; 
 			iteration++; 
 		}
+
     }  
 
 	quicksort_gpu_end = clock() ; 
 	time_used_gpu = ((double)(quicksort_gpu_end - quicksort_gpu_start))/CLOCKS_PER_SEC ; 
-	printf("total time :  %f\n", time_used_gpu) ; 
+	printf("total time gpu :  %f\n", time_used_gpu) ; 
 
 	cl_event read_out_evt ; 
 	cl_event unmap_out_evt ; 
