@@ -191,13 +191,8 @@ float median_computation(cl_command_queue que, kernels* k, device_memeory*m, int
 
 		const int current_nels = send - sstart + 1 ; 
 		int current_nwg = nwg ;
-
-		/**
-		 * IBRID_VERSION 300000
-		 * lws 512 for my gpu
-		 */
 	
-		if(current_nels <= IBRID_VERSION){
+		if(current_nels <= lws){
 			cl_event read_seq_evt ; 
 			cl_event unmap_seq_evt ; 
 			float* seq = NULL; 	
