@@ -20,7 +20,10 @@ void enqueue(Queue *q, sequence* s){
         exit(-1);
     }
     if (q->cur_size < q->tot_size - 1) {
-        q->arr[(++q->tail)%q->tot_size] = *s;
+        q->tail = (q->tail + 1)%q->tot_size ;  
+        q->arr[q->tail].sstart = s->sstart;
+        q->arr[q->tail].send = s->send ;
+        q->arr[q->tail].pivot_value = s->pivot_value ; 
     }
     q->cur_size++;
 }
