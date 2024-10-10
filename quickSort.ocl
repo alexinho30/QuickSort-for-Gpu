@@ -173,6 +173,8 @@ kernel void quicksort_lmem(const int nsequences, global float* restrict in, glob
             int curr_sequence = 0 ;
             int last_sequence_to_process = 0 ;  
 
+            barrier(CLK_LOCAL_MEM_FENCE) ; 
+
             if(li == 0){
                 sequences_to_process[0].sstart = sstart_arr[gi] ; 
                 sequences_to_process[0].send = send_arr[gi] ;
@@ -214,8 +216,6 @@ kernel void quicksort_lmem(const int nsequences, global float* restrict in, glob
                     bit_array_sup[li] = 0 ;
                 }
 
-            //    barrier(CLK_LOCAL_MEM_FENCE) ; 
-
                 int div = 1 ; 
                 int cur_idx = li; 
                 int acc_sup = 0 ; 
@@ -255,8 +255,6 @@ kernel void quicksort_lmem(const int nsequences, global float* restrict in, glob
                     bit_array_sup[li] = acc_sup - exclusive_sup ; 
                 }
 
-                // barrier(CLK_LOCAL_MEM_FENCE) ; 
-
                 if(current_sequence.sstart + li <= current_sequence.send){
                     if(v < current_sequence.pivot_value){
                         const int idx = bit_array_inf[li] + current_sequence.sstart ; 
@@ -267,8 +265,6 @@ kernel void quicksort_lmem(const int nsequences, global float* restrict in, glob
                         in[idx] = v ; 
                     }
                 }
-
-               // barrier(CLK_LOCAL_MEM_FENCE) ; 
 
                 if(li == 0){
                     for(int j = current_sequence.sstart + sum_lt ; j < current_sequence.send - sum_gt + 1 ; j++){

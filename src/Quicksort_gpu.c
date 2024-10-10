@@ -264,8 +264,8 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 	enqueue(&sequences_to_partion, &start_sequence) ;
 
 
-	int* sstart_arr = calloc(nels/2, sizeof(int)) ;  
-	int* send_arr = calloc(nels/2, sizeof(int)) ; 
+	int* sstart_arr = calloc(nels/8, sizeof(int)) ;  
+	int* send_arr = calloc(nels/8, sizeof(int)) ; 
 	int seq_arr_dim = 0 ;    
 
 	int iteration = 0; 
@@ -447,7 +447,8 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 	cl_event final_partition_lmem_evt = final_partition_lmem(resources->que, &k, &m, seq_arr_dim, lws, nwg) ;
 	clWaitForEvents(1, &final_partition_lmem_evt) ;  
 	unsigned long final_partition_lmem_time = runtime_ns( final_partition_lmem_evt) ; 
-	printf("final partition lmem kernel : %.4g\n", final_partition_lmem_time/(1.0e9)) ; 
+	printf("final partition lmem kernel : %.4gs, %.4gGE/s, %.4gGB/s\n", final_partition_lmem_time/(1.0e9), nels/(double)final_partition_lmem_time/(1.0e9),
+			(nels*sizeof(float))/(double)final_partition_lmem_time/(1.0e9)) ; 
 
 	quicksort_gpu_end = clock() ; 
 	time_used_gpu = ((double)(quicksort_gpu_end - quicksort_gpu_start))/CLOCKS_PER_SEC ; 
