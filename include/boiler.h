@@ -1,6 +1,8 @@
 #ifndef BOILER_H
 #define BOILER_H
 
+#define CL_TARGET_OPENCL_VERSION 300
+
 /* A collection of functions wrapping the most common boilerplate
    of OpenCL program. You can now reduce the boilerplate to:
   */
