@@ -169,6 +169,45 @@ cl_event partition_copy(cl_command_queue que, kernels* k, device_memeory* m, con
 
 }
 
+cl_event final_partition_lmem(cl_command_queue que, kernels* k, device_memeory* m, const int num_sequences, const int lws_, const int nwg){
+	cl_int err ; 
+	cl_event final_partition_lmem_evt ; 
+
+	size_t lws[] = {lws_} ; 
+	size_t gws[] = {nwg*lws[0]} ;
+
+
+	err = clSetKernelArg(k->quicksort_lmem, 0, sizeof(cl_int), &num_sequences) ;
+	ocl_check(err, "set kernel nels ") ;
+
+	err = clSetKernelArg(k->quicksort_lmem, 1, sizeof(m->in), &m->in) ;
+	ocl_check(err, "set kernel seq ") ;
+
+	err = clSetKernelArg(k->quicksort_lmem, 2, sizeof(m->sstart_arr), &m->sstart_arr) ;
+	ocl_check(err, "set kernel in") ;
+
+	err = clSetKernelArg(k->quicksort_lmem, 3, sizeof(m->send_arr), &m->send_arr) ;
+	ocl_check(err, "set kernel out") ;
+
+	err = clSetKernelArg(k->quicksort_lmem, 4, sizeof(cl_int)*lws[0], NULL) ;
+	ocl_check(err, "set kernel local mem inf") ;
+
+	err = clSetKernelArg(k->quicksort_lmem, 5, sizeof(cl_int)*lws[0], NULL) ;
+	ocl_check(err, "set kernel local mem sup") ;
+
+	err = clSetKernelArg(k->quicksort_lmem, 6, sizeof(sequence), NULL) ;
+	ocl_check(err, "set kernel local mem sup") ;
+
+	err = clSetKernelArg(k->quicksort_lmem, 7, sizeof(sequence)*1024, NULL) ;
+	ocl_check(err, "set kernel local mem sup") ;
+ 
+
+	err = clEnqueueNDRangeKernel(que,  k->quicksort_lmem, 1, NULL, gws, lws, 0, NULL, &final_partition_lmem_evt) ;
+    ocl_check(err, "enqueue partition copy kernel") ; 
+
+    return final_partition_lmem_evt; 
+}
+
 float* quickSortGpu(const float* vec,  const int nels, const int lws, const int nwg, cl_resources* resources, bool test_correctness){
 
 	if(resources == NULL){
@@ -176,7 +215,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 	}
 
 	times* t = calloc(MAX_NUM_SEQ, sizeof(times)) ; 
-	sequences_info* s = calloc(MAX_NUM_SEQ, sizeof(sequences_info)) ;  
+	sequences_info* s = calloc(MAX_NUM_SEQ, sizeof(sequences_info)) ;   
 
 	time_t quicksort_gpu_start, quicksort_gpu_end ; 
 	double time_used_gpu ; 
@@ -194,9 +233,11 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 	k.scan_update = clCreateKernel(resources->prog, "scan_update", &err);	
 	ocl_check(err, "create kernel scan_update");
 	k.partitioning = clCreateKernel(resources->prog, "partition", &err);	
-	ocl_check(err, "create kernel partition_buff_tmp");
+	ocl_check(err, "create kernel partition");
 	k.partitioning_copy = clCreateKernel(resources->prog, "partition_copy", &err);	
-	ocl_check(err, "create kernel partition_buff_tmp");
+	ocl_check(err, "create kernel partition copy");
+	k.quicksort_lmem = clCreateKernel(resources->prog, "quicksort_lmem", &err);	
+	ocl_check(err, "create kernel quicksort_lmem");
 
 	device_memeory m ; 
 
@@ -220,7 +261,12 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
     start_sequence.sstart = 0 ; 
     start_sequence.send = nels - 1 ; 
 	start_sequence.pivot_value = vec[random_uniform_value(0, nels - 1)] ; 
-	enqueue(&sequences_to_partion, &start_sequence) ;  
+	enqueue(&sequences_to_partion, &start_sequence) ;
+
+
+	int* sstart_arr = calloc(nels/2, sizeof(int)) ;  
+	int* send_arr = calloc(nels/2, sizeof(int)) ; 
+	int seq_arr_dim = 0 ;    
 
 	int iteration = 0; 
 
@@ -228,9 +274,6 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 
 		sequence curr_seq = dequeue(&sequences_to_partion) ; 
 		const int current_nels = curr_seq.send - curr_seq.sstart + 1 ;
-		/*if(current_nels < 0){
-			printf("current_nels : %d current_sstart : %d current_send : %d\n", current_nels, curr_seq.sstart, curr_seq.send) ; 
-		}*/
 		int current_nwg = nwg ;
 
 		if(current_nwg*lws > current_nels){
@@ -316,18 +359,9 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		s2.send = curr_seq.send ;  
 
 		const int s1_dim = s1.send - s1.sstart + 1 ; 
-		const int s2_dim = s2.send - s2.sstart + 1 ;
+		const int s2_dim = s2.send - s2.sstart + 1 ;  
 
-		if(s1.send == 0 || s2.send == 0){
-			printf("s1_dim : %d s2_dim : %d", s1_dim, s2_dim) ; 
-		}
-
-		/*
-			IBRID_VERSION soglia 300k
-			ONLY_GPU soglia 2 
-		*/
-
-		if((s1_dim > ONLY_GPU)){
+		if((s1_dim > lws)){
 			const int pivot_index = random_uniform_value(0, s1_dim - 1) + s1.sstart; 
 
 			#if 1
@@ -354,25 +388,13 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 
 			enqueue(&sequences_to_partion, &s1) ; 
 		}
-		else  if(s1_dim > 1){
-
-			cl_event read_s1_evt ; 
-			cl_event unmap_s1_evt ; 
-			float* s1_arr = NULL;
-
-			s1_arr = clEnqueueMapBuffer(resources->que, m.in, CL_TRUE,
-					CL_MAP_READ | CL_MAP_WRITE, sizeof(cl_float)*s1.sstart, sizeof(cl_float)*s1_dim,
-						0, NULL, &read_s1_evt , &err) ; 
-			ocl_check(err, "read s1 sequence") ;
-
-			quicksort(s1_arr, 0, s1_dim - 1) ;
-
-			err = clEnqueueUnmapMemObject(resources->que, m.in, s1_arr,
-					1, &read_s1_evt, &unmap_s1_evt);
-			ocl_check(err, "unmap s1 sequence");
+		else if(s1_dim > 1){
+			sstart_arr[seq_arr_dim] = s1.sstart ; 
+			send_arr[seq_arr_dim] = s1.send ; 
+			seq_arr_dim++ ;  
 		}
 
-		if((s2_dim > ONLY_GPU)){
+		if((s2_dim > lws)){
 			const int pivot_index = random_uniform_value(0, s2_dim - 1) + s2.sstart; 
 
 			#if 1
@@ -398,21 +420,10 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
  
 			enqueue(&sequences_to_partion, &s2) ;
 		}
-		else if(s2_dim >1){
-			cl_event read_s2_evt ; 
-			cl_event unmap_s2_evt ; 
-			float* s2_arr = NULL;
-
-			s2_arr = clEnqueueMapBuffer(resources->que, m.in, CL_TRUE,
-					CL_MAP_READ | CL_MAP_WRITE, sizeof(cl_float)*s2.sstart, sizeof(cl_float)*s2_dim,
-						0, NULL, &read_s2_evt , &err) ; 
-			ocl_check(err, "read s2 sequence") ;
-
-			quicksort(s2_arr, 0, s2_dim - 1) ; 
-
-			err = clEnqueueUnmapMemObject(resources->que, m.in, s2_arr,
-					1, &read_s2_evt, &unmap_s2_evt);
-			ocl_check(err, "unmap s2 sequence") ; 
+		else if(s2_dim > 1){
+			sstart_arr[seq_arr_dim] = s2.sstart ;
+			send_arr[seq_arr_dim] = s2.send ; 
+			seq_arr_dim++ ; 
 		}
 
 		if(test_correctness){
@@ -427,6 +438,16 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 			iteration++; 
 		}
     }  
+
+	m.sstart_arr = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, (seq_arr_dim)*sizeof(cl_float), (void*)sstart_arr, &err); 
+	ocl_check(err, "create buffer sstart arr");
+	m.send_arr = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, (seq_arr_dim)*sizeof(cl_float), (void*)send_arr, &err); 
+	ocl_check(err, "create buffer ssend arr");
+
+	cl_event final_partition_lmem_evt = final_partition_lmem(resources->que, &k, &m, seq_arr_dim, lws, nwg) ;
+	clWaitForEvents(1, &final_partition_lmem_evt) ;  
+	unsigned long final_partition_lmem_time = runtime_ns( final_partition_lmem_evt) ; 
+	printf("final partition lmem kernel : %.4g\n", final_partition_lmem_time/(1.0e9)) ; 
 
 	quicksort_gpu_end = clock() ; 
 	time_used_gpu = ((double)(quicksort_gpu_end - quicksort_gpu_start))/CLOCKS_PER_SEC ; 
@@ -475,6 +496,8 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		ocl_check(err, "unmap buffer out");
 
 	release_queue(&sequences_to_partion) ; 	
+	free(sstart_arr) ; 
+	free(send_arr) ; 
 		
 	clReleaseMemObject(m.in) ;
 	clReleaseMemObject(m.buff_tmp) ;
@@ -482,11 +505,14 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 	clReleaseMemObject(m.bit_map_sup) ;
 	clReleaseMemObject(m.tails_inf) ;
 	clReleaseMemObject(m.tails_sup) ; 
+	clReleaseMemObject(m.sstart_arr) ; 
+	clReleaseMemObject(m.send_arr) ; 
 
 	clReleaseKernel(k.splitting_elements) ; 
 	clReleaseKernel(k.partitioning) ;
 	clReleaseKernel(k.scan_gpu) ;
 	clReleaseKernel(k.scan_update) ;
+	clReleaseKernel(k.quicksort_lmem) ; 
 
 	return out_copy ; 
 
