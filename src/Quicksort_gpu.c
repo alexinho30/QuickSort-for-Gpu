@@ -472,34 +472,16 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		const int s1_dim = s1.send - s1.sstart + 1 ; 
 		const int s2_dim = s2.send - s2.sstart + 1 ;
 
-		/**
-		 * IBRID_VERSION 300000
-		 * ONLY_GPU 2
-		 */
-
-		if((s1_dim > IBRID_VERSION)){
+		if((s1_dim > lws)){
 			s1.pivot_value = median_computation(resources->que, &k, &m, s1.sstart, s1.send, lws, nwg) ;
 
 			enqueue(&sequences_to_partion, &s1) ; 
 		}
-		else  if(s1_dim > 1){
-			cl_event read_s1_evt ; 
-			cl_event unmap_s1_evt ; 
-			float* s1_arr = NULL;
+		else if(s1_dim > 1){
 
-			s1_arr = clEnqueueMapBuffer(resources->que, m.in, CL_TRUE,
-					CL_MAP_READ | CL_MAP_WRITE, sizeof(cl_float)*s1.sstart, sizeof(cl_float)*s1_dim,
-						0, NULL, &read_s1_evt , &err) ; 
-			ocl_check(err, "read buffer out") ;
-
-			quicksort(s1_arr, 0, s1_dim - 1) ;
-
-			err = clEnqueueUnmapMemObject(resources->que, m.in, s1_arr,
-					1, &read_s1_evt, &unmap_s1_evt);
-			ocl_check(err, "unmap buffer out");
 		}
 
-		if((s2_dim > IBRID_VERSION)){
+		if((s2_dim > lws)){
 
 			s2.pivot_value = median_computation(resources->que, &k, &m, s2.sstart, s2.send, lws, nwg) ; 
 
@@ -510,20 +492,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 			enqueue(&sequences_to_partion, &s2) ;
 		}
 		else if(s2_dim > 1){
-			cl_event read_s2_evt ; 
-			cl_event unmap_s2_evt ; 
-			float* s2_arr = NULL;
-
-			s2_arr = clEnqueueMapBuffer(resources->que, m.in, CL_TRUE,
-					CL_MAP_READ | CL_MAP_WRITE, sizeof(cl_float)*s2.sstart, sizeof(cl_float)*s2_dim,
-						0, NULL, &read_s2_evt , &err) ; 
-			ocl_check(err, "read buffer out") ;
-
-			quicksort(s2_arr, 0, s2_dim - 1) ; 
-
-			err = clEnqueueUnmapMemObject(resources->que, m.in, s2_arr,
-					1, &read_s2_evt, &unmap_s2_evt);
-			ocl_check(err, "unmap buffer out") ; 
+			
 		}
 
 		if(test_correctness){

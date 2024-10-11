@@ -7,9 +7,6 @@
 #define MAX_NUM_SEQ 30000000
 #define TEST 1
 
-#define ONLY_GPU 2
-#define IBRID_VERSION 300000
-
 #include<stdio.h>
 #include<unistd.h>
 #include "boiler.h"
