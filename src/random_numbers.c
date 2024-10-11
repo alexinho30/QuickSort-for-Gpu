@@ -68,6 +68,6 @@ void binom_distr_arr(float* arr, const int nels, const int n, const float p){
 
 void unif_distr_arr(float*arr, const int nels, const int start, const int end){
     for(int i = 0 ; i < nels ; i++){
-        arr[i] = random_uniform_zero_one()*(end-start+1) ; 
+        arr[i] = random_uniform_zero_one()*(end-start+1) + start; 
     }
 }

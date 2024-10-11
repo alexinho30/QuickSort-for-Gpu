@@ -226,7 +226,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 
 	if(resources == NULL){
 		handle_error("resources set to null\n") ; 
-	}
+	} 
 
 	times* t = calloc(MAX_NUM_SEQ, sizeof(times)) ; 
 	sequences_info* s = calloc(MAX_NUM_SEQ, sizeof(sequences_info)) ;  
