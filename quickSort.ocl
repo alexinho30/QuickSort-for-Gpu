@@ -1,3 +1,10 @@
+typedef struct{
+    int sstart ; 
+    int send ; 
+    float pivot_value; 
+}sequence ; 
+
+
 kernel void split_elements(const int nels, const int sstart, global const float * restrict in,  
 const float pivot, global int* bit_array_sup, global int* bit_array_inf){
     int i = get_global_id(0) ; 
@@ -150,5 +157,141 @@ kernel void partition_copy(const int nels, const int sstart, global float* restr
         in[i + sstart] = v ; 
         i+=get_global_size(0) ; 
     }  
-
 }
+
+kernel void quicksort_lmem(const int nsequences, global float* restrict in, global const int* restrict sstart_arr, global const int* restrict send_arr,
+    local int* bit_array_inf, local int* bit_array_sup, local sequence* next_sequence, local sequence* sequences_to_process){
+
+        int i = get_global_id(0) ; 
+        int li = get_local_id(0) ;
+        int gi = get_group_id(0) ; 
+        const int num_work_groups = get_num_groups(0) ;
+
+
+        while(gi < nsequences){
+            int curr_sequence = 0 ;
+            int last_sequence_to_process = 0 ;  
+
+            barrier(CLK_LOCAL_MEM_FENCE) ; 
+
+            if(li == 0){
+                sequences_to_process[0].sstart = sstart_arr[gi] ; 
+                sequences_to_process[0].send = send_arr[gi] ;
+                sequences_to_process[0].pivot_value = in[sequences_to_process[0].sstart] ;
+                next_sequence->sstart = 0 ;  
+            }
+
+            barrier(CLK_LOCAL_MEM_FENCE) ; 
+
+            while(next_sequence->sstart != -1){
+
+                if(li == 0){
+                    *next_sequence = sequences_to_process[curr_sequence] ;
+                }
+
+                barrier(CLK_LOCAL_MEM_FENCE) ; 
+
+                sequence current_sequence = *next_sequence ; 
+                float v = 0; 
+
+                if(current_sequence.sstart + li <= current_sequence.send){
+                    v = in[current_sequence.sstart + li] ;  
+
+                    if(v > current_sequence.pivot_value){
+                        bit_array_inf[li] = 0 ; 
+                        bit_array_sup[li] = 1 ; 
+                    }
+                    else if(v < current_sequence.pivot_value){
+                        bit_array_inf[li] = 1 ; 
+                        bit_array_sup[li] = 0 ;
+                    }
+                    else{
+                        bit_array_inf[li] = 0 ; 
+                        bit_array_sup[li] = 0 ;
+                    }
+                }
+                else{
+                    bit_array_inf[li] = 0 ; 
+                    bit_array_sup[li] = 0 ;
+                }
+
+                int div = 1 ; 
+                int cur_idx = li; 
+                int acc_sup = 0 ; 
+                int acc_inf = 0 ; 
+
+                if(current_sequence.sstart + li <= current_sequence.send){
+                    acc_sup = bit_array_sup[li] ; 
+                    acc_inf = bit_array_inf[li] ; 
+                } 
+
+                const int exclusive_sup = acc_sup ; 
+                const int exclusive_inf = acc_inf ; 
+
+                while(div < get_local_size(0)){
+                    const int offset = div - 1 ;
+                    const int next_idx = cur_idx/2 ;
+                    barrier(CLK_LOCAL_MEM_FENCE) ; 
+                    if(cur_idx & 1){
+                        acc_sup+= bit_array_sup[next_idx*div*2 + offset] ; 
+                        acc_inf+= bit_array_inf[next_idx*div*2 + offset] ; 
+                        bit_array_inf[li] = acc_inf ; 
+                        bit_array_sup[li] = acc_sup ; 
+                    }
+                    cur_idx = next_idx ; 
+                    div*=2 ; 
+                }
+
+                barrier(CLK_LOCAL_MEM_FENCE) ; 
+ 
+                const int sum_lt = bit_array_inf[get_local_size(0) - 1] ;
+                const int sum_gt = bit_array_sup[get_local_size(0) - 1] ;
+
+                barrier(CLK_LOCAL_MEM_FENCE) ; 
+
+                if(current_sequence.sstart + li <= current_sequence.send){
+                    bit_array_inf[li] = acc_inf - exclusive_inf ; 
+                    bit_array_sup[li] = acc_sup - exclusive_sup ; 
+                }
+
+                if(current_sequence.sstart + li <= current_sequence.send){
+                    if(v < current_sequence.pivot_value){
+                        const int idx = bit_array_inf[li] + current_sequence.sstart ; 
+                        in[idx] = v ; 
+                    }
+                    else if( v > current_sequence.pivot_value){
+                        const int idx = bit_array_sup[li] + current_sequence.send - sum_gt + 1 ;
+                        in[idx] = v ; 
+                    }
+                }
+
+                if(li == 0){
+                    for(int j = current_sequence.sstart + sum_lt ; j < current_sequence.send - sum_gt + 1 ; j++){
+                        in[j] = current_sequence.pivot_value ; 
+                    }
+
+                    if(sum_lt >= 2){
+                        last_sequence_to_process++ ;  
+                        sequences_to_process[last_sequence_to_process].sstart = current_sequence.sstart ; 
+                        sequences_to_process[last_sequence_to_process].send = current_sequence.sstart +  sum_lt - 1 ; 
+                        sequences_to_process[last_sequence_to_process].pivot_value = in[current_sequence.sstart] ;
+                    }
+
+                    if(sum_gt >= 2){
+                        last_sequence_to_process++ ;  
+                        sequences_to_process[last_sequence_to_process].sstart = current_sequence.send - sum_gt + 1 ; 
+                        sequences_to_process[last_sequence_to_process].send = current_sequence.send ; 
+                        sequences_to_process[last_sequence_to_process].pivot_value = in[current_sequence.send- sum_gt + 1] ; 
+                    }
+                    curr_sequence++ ; 
+
+                    if(curr_sequence > last_sequence_to_process){
+                        next_sequence->sstart = -1 ; 
+                    }
+                }
+
+                barrier(CLK_LOCAL_MEM_FENCE) ; 
+            }
+            gi+=num_work_groups ; 
+        }
+    }
