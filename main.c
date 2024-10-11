@@ -7,12 +7,17 @@
 int main(int argc, char* const* argv){
 
 	char in_file[BUFSIZE], out_file[BUFSIZE] ; 
-	int opt, d = 1, nels = 10000, seed = 21 ; 
+	int opt, d = 1, nels = 10000, seed = 21, lws = 512, nwg_cu = 4; 
 	float p1, p2 ;  
 	bool test_mode ; 
 
-	while((opt = getopt(argc, argv, ":i:o:tn:s:d:p:r:")) != -1){
+	while((opt = getopt(argc, argv, ":l:g:i:o:tn:s:d:p:r:")) != -1){
 		switch(opt){
+			case 'l':
+				lws = atoi(optarg) ; 
+				break ;
+			case 'g':
+				nwg_cu = atoi(optarg) ; 
 			case 'i':
 				strcpy(in_file, optarg) ; 
 				break ;
@@ -65,14 +70,10 @@ int main(int argc, char* const* argv){
 		}
 	}
 
-	cl_int err , ncu = 0, nwg_cu = 4; 
-	size_t lws = 512 ;  
+	cl_int err , ncu = 0; 
 
 	cl_resources resource ; 
 	create_resources(&resource, "quickSort.ocl") ; 
-
-	//err = clGetDeviceInfo(resource.d, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(lws), &lws, NULL);
-	//printf("lws: %ld\n", lws);
 
 	err = clGetDeviceInfo(resource.d, CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(ncu), &ncu, NULL);
 	cl_uint nwg = ncu*nwg_cu;

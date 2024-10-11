@@ -4,6 +4,7 @@
 #include<math.h>
 #include <stdbool.h>
 #include "../include/quicksort_cpu_version.h"
+#include "../include/random_numbers.h"
 #define MAX_NUM_SEQ 300000000
 #define TEST 1
 
@@ -18,7 +19,8 @@ typedef struct{
 	cl_kernel scan_gpu ; 
 	cl_kernel scan_update ;
 	cl_kernel partitioning ;
-	cl_kernel partitioning_copy ;   
+	cl_kernel partitioning_copy ;
+    cl_kernel quicksort_lmem ;   
 }kernels ; 
 
 typedef struct{
@@ -30,6 +32,8 @@ typedef struct{
     cl_mem tails_inf ; 
     cl_mem tails_sup ;
     cl_mem gt ;  
+    cl_mem sstart_arr ; 
+    cl_mem send_arr ; 
 }device_memeory ; 
 
 float* quickSortGpu(const float* vec, const int nels, const int lws, const int nwg_cu, cl_resources* resources, bool test_mode) ; 
