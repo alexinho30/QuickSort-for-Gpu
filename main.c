@@ -52,7 +52,7 @@ int main(int argc, char* const* argv){
 				break ; 
 			
 			case 'r':
-				p2 = atoi(optarg) ; 
+				p2 = atof(optarg) ; 
 				break ;
 
 			case 'n':
