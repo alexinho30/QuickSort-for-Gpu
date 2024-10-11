@@ -51,7 +51,7 @@ int main(int argc, char* const* argv){
 				break ; 
 			
 			case 'r':
-				p2 = atoi(optarg) ; 
+				p2 = atof(optarg) ; 
 				break ;
 
 			case 'n':
@@ -91,14 +91,17 @@ int main(int argc, char* const* argv){
 		
 		switch(d){
 			case 1:
+				printf("p1 : %f p2 : %f \n", p1, p2) ; 
 				normal_distr_arr(vec, nels, p1, p2) ;
 				break ; 
 
 			case 2:
+				printf("p1 : %f p2 : %f \n", p1, p2) ; 
 				binom_distr_arr(vec, nels, p1, p2) ;
 				break ; 
 
 			case 3:
+				printf("p1 : %f p2 : %f \n", p1, p2) ; 
 				unif_distr_arr(vec, nels, p1, p2) ;
 				break ;    
 		}

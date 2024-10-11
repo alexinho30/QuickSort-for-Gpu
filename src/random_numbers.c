@@ -39,7 +39,7 @@ float binomial_distribution_value(const int n, const float p){
     float binom_value = 0 ; 
 
     for(int i = 0 ; i < n ; i++){
-        float r = random_uniform_zero_one() ; 
+        float r = random_uniform_zero_one() ;  
         if(r < p){
             binom_value++ ; 
         }

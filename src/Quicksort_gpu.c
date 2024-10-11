@@ -215,7 +215,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 	}
 
 	times* t = calloc(MAX_NUM_SEQ, sizeof(times)) ; 
-	sequences_info* s = calloc(MAX_NUM_SEQ, sizeof(sequences_info)) ;   
+	sequences_info* s = calloc(MAX_NUM_SEQ, sizeof(sequences_info)) ; 
 
 	time_t quicksort_gpu_start, quicksort_gpu_end ; 
 	double time_used_gpu ; 
