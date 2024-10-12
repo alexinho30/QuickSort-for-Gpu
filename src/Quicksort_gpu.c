@@ -255,17 +255,17 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 
 	device_memeory m ; 
 
-	m.in = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, (nels)*sizeof(cl_float), (void*)vec, &err); 
+	m.in = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, round_mul_up(nels, 4)*sizeof(cl_float), (void*)vec, &err); 
 	ocl_check(err, "create buffer d_buf");
-	m.buff_tmp = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR , (nels)*sizeof(cl_float), NULL, &err);
+	m.buff_tmp = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR , round_mul_up(nels, 4)*sizeof(cl_float), NULL, &err);
 	ocl_check(err, "create buffer lt");
 	m.lt = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR , (nwg)*sizeof(cl_int), NULL, &err);
 	ocl_check(err, "create buffer lt");
 	m.gt = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, (nwg)*sizeof(cl_int), NULL, &err);
 	ocl_check(err, "create buffer gt"); 
-	m.bit_map_sup = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR , nels*sizeof(cl_int), NULL, &err);
+	m.bit_map_sup = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR , round_mul_up(nels, 4)*sizeof(cl_int), NULL, &err);
 	ocl_check(err, "create buffer bit map sup");
-	m.bit_map_inf = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR , nels*sizeof(cl_int), NULL, &err);
+	m.bit_map_inf = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR , round_mul_up(nels, 4)*sizeof(cl_int), NULL, &err);
 	ocl_check(err, "create buffer bit map inf");
 	m.tails_inf = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR , nwg*sizeof(cl_int), NULL, &err);
 	ocl_check(err, "create buffer tails inf");
