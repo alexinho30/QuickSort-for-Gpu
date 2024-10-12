@@ -297,7 +297,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 			current_nwg = current_nels/(4*lws) ; 
 		}
 
-		if(!current_nwg) current_nwg++ ; 
+		if(current_nwg <= 1) current_nwg=2 ;
 
 
         cl_event evt_split_elements = split_elements(resources->que, &k, &m, current_nels, curr_seq.sstart, lws, curr_seq.pivot_value, current_nwg) ; 
