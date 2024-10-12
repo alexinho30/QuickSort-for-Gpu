@@ -93,6 +93,8 @@ cl_event scan_seq_update(cl_command_queue q, kernels* k, device_memeory* m, cl_i
 	err = clSetKernelArg(k->scan_update, 4, sizeof(m->tails_inf), &m->tails_inf) ;
 	ocl_check(err, "set kernel lt") ;
 
+	//printf("global work size : %d lws : %d nwg : %d\n", nwg*lws[0], lws[0], nwg) ; 
+
 	err = clEnqueueNDRangeKernel(q, k->scan_update, 1, NULL, gws, lws, 0, NULL, &scan_evt) ;
     ocl_check(err, "enqueue scan seq update kernel") ; 
 
@@ -280,7 +282,9 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 			current_nwg = current_nels/lws ;  
 		}
 
-		if(!current_nwg) current_nwg++ ; 
+		if(current_nwg <= 1) current_nwg=2 ;
+
+		//printf("current_nwg : %d , current_nels : %d, lws : %d\n", current_nwg, current_nels, lws) ;  
 
         cl_event evt_split_elements = split_elements(resources->que, &k, &m, current_nels, curr_seq.sstart, lws, curr_seq.pivot_value, current_nwg) ;  
 
