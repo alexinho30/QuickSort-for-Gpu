@@ -7,7 +7,7 @@ void swap(float* a, float* b){
     *b = tmp ; 
 }
 
-float partition_median(float *vec, const int start, const int end, int* lt, int* gt){
+void partition_median(float *vec, const int start, const int end, int* lt, int* gt){
     const float pivot = vec[start] ; 
     int i = start + 1;
 
@@ -23,8 +23,6 @@ float partition_median(float *vec, const int start, const int end, int* lt, int*
             i++ ; 
         }
     }
-    
-    return pivot ; 
 }
 
 
@@ -46,7 +44,7 @@ float median(float* vec, const int start, const int end, const int med){
 }
 
 
-float partition_cpu(float *vec, const int start, const int end, int* lt, int* gt){
+void partition_cpu(float *vec, const int start, const int end, int* lt, int* gt){
     const int nels = end - start + 1 ; 
     float pivot = 0 ; 
 
@@ -67,8 +65,6 @@ float partition_cpu(float *vec, const int start, const int end, int* lt, int* gt
             i++ ; 
         }
     }
-    
-    return pivot ; 
 }
 
 void quicksort(float* vec, const int start, const int end){
@@ -78,7 +74,7 @@ void quicksort(float* vec, const int start, const int end){
 
     int lt = start, gt = end ; 
 
-    float pivot = partition_cpu(vec, start, end, &lt, &gt) ; 
+    partition_cpu(vec, start, end, &lt, &gt) ; 
     
     quicksort(vec, start, lt - 1) ;
     quicksort(vec, gt + 1, end) ;  
