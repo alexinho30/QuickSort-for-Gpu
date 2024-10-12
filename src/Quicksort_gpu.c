@@ -242,9 +242,9 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 
 	device_memeory m ; 
 
-	m.in = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, (nels)*sizeof(cl_float), (void*)vec, &err); 
+	m.in = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, round_mul_up(nels, 4)*sizeof(cl_float), (void*)vec, &err); 
 	ocl_check(err, "create buffer d_buf");
-	m.buff_tmp = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR , (nels)*sizeof(cl_float), NULL, &err);
+	m.buff_tmp = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR , round_mul_up(nels, 4)*sizeof(cl_float), NULL, &err);
 	ocl_check(err, "create buffer lt");
 	m.lt = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR , (nwg)*sizeof(cl_int), NULL, &err);
 	ocl_check(err, "create buffer lt");
@@ -291,7 +291,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 			
 		}
 		
-		if(!current_nwg_scan) current_nwg_scan++ ; 
+		if(current_nwg_scan <= 1) current_nwg_scan=2 ; 
 		if(!current_nwg_split_partion) current_nwg_split_partion++ ; 
 
         cl_event evt_split_elements = split_elements(resources->que, &k, &m, current_nels, curr_seq.sstart, lws, curr_seq.pivot_value, current_nwg_split_partion) ; 
