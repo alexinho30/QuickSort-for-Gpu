@@ -34,12 +34,48 @@ cl_event split_elements(cl_command_queue q, kernels* k, device_memeory* m , cl_i
     return evt_split_elements;
 }
 
-cl_event scan_seq(cl_command_queue q, kernels* k, device_memeory* m, cl_mem in_1, cl_mem in_2, cl_int nels, cl_int lws_, const int nwg){
+cl_event scan_seq_lmem(cl_command_queue q, kernels* k, device_memeory* m, cl_mem in_1, cl_mem in_2, cl_int nels, cl_int lws_, const int nwg){
 
 	cl_int err ; 
 	cl_event scan_evt ; 
 
 	size_t lws[] = {lws_} ; 
+	size_t gws[] = {nwg*lws[0]} ; 
+
+	err = clSetKernelArg(k->scan_gpu_lmem, 0, sizeof(cl_int), &nels) ;
+	ocl_check(err, "set kernel nels ") ;
+
+	err = clSetKernelArg(k->scan_gpu_lmem, 1, sizeof(in_1), &in_1) ;
+	ocl_check(err, "set kernel d_buf") ;
+
+	err = clSetKernelArg(k->scan_gpu_lmem, 2, sizeof(in_2), &in_2) ;
+	ocl_check(err, "set kernel d_buf") ;
+
+	err = clSetKernelArg(k->scan_gpu_lmem, 3, sizeof(m->tails_inf), &m->tails_inf) ;
+	ocl_check(err, "set kernel lt") ;
+
+	err = clSetKernelArg(k->scan_gpu_lmem, 4, sizeof(m->tails_sup), &m->tails_sup) ;
+	ocl_check(err, "set kernel gt") ;
+
+	err = clSetKernelArg(k->scan_gpu_lmem, 5, sizeof(cl_int)*lws[0], NULL) ;
+	ocl_check(err, "set kernel local mem inf") ;
+
+	err = clSetKernelArg(k->scan_gpu_lmem, 6, sizeof(cl_int)*lws[0], NULL) ;
+	ocl_check(err, "set kernel local mem sup") ;
+
+	err = clEnqueueNDRangeKernel(q, k->scan_gpu_lmem, 1, NULL, gws, lws, 0, NULL, &scan_evt) ;
+    ocl_check(err, "enqueue scan seq kernel") ; 
+
+    return scan_evt; 
+
+}
+
+cl_event scan_seq(cl_command_queue q, kernels* k, device_memeory* m, cl_mem in_1, cl_mem in_2, cl_int nels, const int nwg){
+
+	cl_int err ; 
+	cl_event scan_evt ; 
+
+	size_t lws[] = {1} ; 
 	size_t gws[] = {nwg*lws[0]} ; 
 
 	err = clSetKernelArg(k->scan_gpu, 0, sizeof(cl_int), &nels) ;
@@ -56,12 +92,6 @@ cl_event scan_seq(cl_command_queue q, kernels* k, device_memeory* m, cl_mem in_1
 
 	err = clSetKernelArg(k->scan_gpu, 4, sizeof(m->tails_sup), &m->tails_sup) ;
 	ocl_check(err, "set kernel gt") ;
-
-	err = clSetKernelArg(k->scan_gpu, 5, sizeof(cl_int)*lws[0], NULL) ;
-	ocl_check(err, "set kernel local mem inf") ;
-
-	err = clSetKernelArg(k->scan_gpu, 6, sizeof(cl_int)*lws[0], NULL) ;
-	ocl_check(err, "set kernel local mem sup") ;
 
 	err = clEnqueueNDRangeKernel(q, k->scan_gpu, 1, NULL, gws, lws, 0, NULL, &scan_evt) ;
     ocl_check(err, "enqueue scan seq kernel") ; 
@@ -92,8 +122,6 @@ cl_event scan_seq_update(cl_command_queue q, kernels* k, device_memeory* m, cl_i
 
 	err = clSetKernelArg(k->scan_update, 4, sizeof(m->tails_inf), &m->tails_inf) ;
 	ocl_check(err, "set kernel lt") ;
-
-	//printf("global work size : %d lws : %d nwg : %d\n", nwg*lws[0], lws[0], nwg) ; 
 
 	err = clEnqueueNDRangeKernel(q, k->scan_update, 1, NULL, gws, lws, 0, NULL, &scan_evt) ;
     ocl_check(err, "enqueue scan seq update kernel") ; 
@@ -210,7 +238,46 @@ cl_event final_partition_lmem(cl_command_queue que, kernels* k, device_memeory* 
     return final_partition_lmem_evt; 
 }
 
-float* quickSortGpu(const float* vec,  const int nels, const int lws, const int nwg, cl_resources* resources, bool test_correctness){
+cl_event final_partition_lmem4(cl_command_queue que, kernels* k, device_memeory* m, const int num_sequences, const int lws_, const int nwg){
+	cl_int err ; 
+	cl_event final_partition_lmem_evt ; 
+
+	size_t lws[] = {lws_} ; 
+	size_t gws[] = {1*lws[0]} ;
+
+
+	err = clSetKernelArg(k->quicksort_lmem4, 0, sizeof(cl_int), &num_sequences) ;
+	ocl_check(err, "set kernel nels ") ;
+
+	err = clSetKernelArg(k->quicksort_lmem4, 1, sizeof(m->in), &m->in) ;
+	ocl_check(err, "set kernel seq ") ;
+
+	err = clSetKernelArg(k->quicksort_lmem4, 2, sizeof(m->sstart_arr), &m->sstart_arr) ;
+	ocl_check(err, "set kernel in") ;
+
+	err = clSetKernelArg(k->quicksort_lmem4, 3, sizeof(m->send_arr), &m->send_arr) ;
+	ocl_check(err, "set kernel out") ;
+
+	err = clSetKernelArg(k->quicksort_lmem4, 4, sizeof(cl_int)*lws[0], NULL) ;
+	ocl_check(err, "set kernel local mem inf") ;
+
+	err = clSetKernelArg(k->quicksort_lmem4, 5, sizeof(cl_int)*lws[0], NULL) ;
+	ocl_check(err, "set kernel local mem sup") ;
+
+	err = clSetKernelArg(k->quicksort_lmem4, 6, sizeof(sequence), NULL) ;
+	ocl_check(err, "set kernel local mem sup") ;
+
+	err = clSetKernelArg(k->quicksort_lmem4, 7, sizeof(sequence_)*4096, NULL) ;
+	ocl_check(err, "set kernel local mem sup") ;
+ 
+
+	err = clEnqueueNDRangeKernel(que,  k->quicksort_lmem4, 1, NULL, gws, lws, 0, NULL, &final_partition_lmem_evt) ;
+    ocl_check(err, "enqueue partition copy kernel") ; 
+
+    return final_partition_lmem_evt; 
+}
+
+float* quickSortGpu(const float* vec,  const int nels, const int lws, const int nwg, cl_resources* resources, bool test_correctness, bool local_memory){
 
 	if(resources == NULL){
 		handle_error("resources set to null\n") ; 
@@ -230,8 +297,10 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 
 	k.splitting_elements = clCreateKernel(resources->prog, "split_elements", &err);	
 	ocl_check(err, "create kernel split_elements");
+	k.scan_gpu_lmem = clCreateKernel(resources->prog, "scan_lmem", &err);	
+	ocl_check(err, "create kernel scan_lmem");
 	k.scan_gpu = clCreateKernel(resources->prog, "scan", &err);	
-	ocl_check(err, "create kernel scan");
+	ocl_check(err, "create kernel scan_lmem");
 	k.scan_update = clCreateKernel(resources->prog, "scan_update", &err);	
 	ocl_check(err, "create kernel scan_update");
 	k.partitioning = clCreateKernel(resources->prog, "partition", &err);	
@@ -240,6 +309,8 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 	ocl_check(err, "create kernel partition copy");
 	k.quicksort_lmem = clCreateKernel(resources->prog, "quicksort_lmem", &err);	
 	ocl_check(err, "create kernel quicksort_lmem");
+	k.quicksort_lmem4 = clCreateKernel(resources->prog, "quicksort_lmem4", &err);	
+	ocl_check(err, "create kernel quicksort_lmem4");
 
 	device_memeory m ; 
 
@@ -282,9 +353,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 			current_nwg = current_nels/lws ;  
 		}
 
-		if(current_nwg <= 1) current_nwg=2 ;
-
-		//printf("current_nwg : %d , current_nels : %d, lws : %d\n", current_nwg, current_nels, lws) ;  
+		if(current_nwg <= 1) current_nwg=2 ; 
 
         cl_event evt_split_elements = split_elements(resources->que, &k, &m, current_nels, curr_seq.sstart, lws, curr_seq.pivot_value, current_nwg) ;  
 
@@ -292,9 +361,16 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 
 		cl_event scan_evt[3] ; 
 
-		scan_evt[0] = scan_seq(resources->que, &k, &m,  m.bit_map_sup, m.bit_map_inf, current_nels, lws, current_nwg) ;
-		scan_evt[1] = scan_seq(resources->que, &k, &m, m.tails_sup, m.tails_inf, current_nwg, lws, 1) ;  
-		scan_evt[2] = scan_seq_update(resources->que, &k, &m, current_nels, lws, current_nwg - 1) ;  
+		if(local_memory){
+			scan_evt[0] = scan_seq_lmem(resources->que, &k, &m,  m.bit_map_sup, m.bit_map_inf, current_nels, lws, current_nwg) ;
+			scan_evt[1] = scan_seq_lmem(resources->que, &k, &m, m.tails_sup, m.tails_inf, current_nwg, lws, 1) ;  
+			scan_evt[2] = scan_seq_update(resources->que, &k, &m, current_nels, lws, current_nwg - 1) ;
+		}
+		else{
+			scan_evt[0] = scan_seq(resources->que, &k, &m,  m.bit_map_sup, m.bit_map_inf, current_nels, current_nwg) ;
+			scan_evt[1] = scan_seq(resources->que, &k, &m, m.tails_sup, m.tails_inf, current_nwg, 1) ;  
+			scan_evt[2] = scan_seq_update(resources->que, &k, &m, current_nels, lws, current_nwg - 1) ;
+		}  
 
 
 		clWaitForEvents(3, scan_evt) ; 
@@ -324,7 +400,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		ocl_check(err, "read buffer gt");
 
 		const int sum_lt = (*last_value >= curr_seq.pivot_value) ? *lt : *lt +1 ; 
-		const int sum_gt = (*last_value <= curr_seq.pivot_value) ? *gt : *gt +1  ; 
+		const int sum_gt = (*last_value <= curr_seq.pivot_value) ? *gt : *gt +1 ;
 
 		cl_event unmap_evt_lt;
 		err = clEnqueueUnmapMemObject(resources->que, m.bit_map_inf, lt,
@@ -365,7 +441,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		const int s1_dim = s1.send - s1.sstart + 1 ; 
 		const int s2_dim = s2.send - s2.sstart + 1 ;  
 
-		if((s1_dim > lws)){
+		if((s1_dim > lws*4)){
 			const int pivot_index = random_uniform_value(0, s1_dim - 1) + s1.sstart; 
 
 			#if 1
@@ -398,7 +474,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 			seq_arr_dim++ ;  
 		}
 
-		if((s2_dim > lws)){
+		if((s2_dim > lws*4)){
 			const int pivot_index = random_uniform_value(0, s2_dim - 1) + s2.sstart; 
 
 			#if 1
@@ -443,16 +519,18 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		}
     }  
 
-	m.sstart_arr = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, (seq_arr_dim)*sizeof(cl_float), (void*)sstart_arr, &err); 
+	printf("ended firsh phase\n") ; 
+	fflush(stdout) ; 
+
+	m.sstart_arr = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, (seq_arr_dim)*sizeof(cl_int), (void*)sstart_arr, &err); 
 	ocl_check(err, "create buffer sstart arr");
-	m.send_arr = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, (seq_arr_dim)*sizeof(cl_float), (void*)send_arr, &err); 
+	m.send_arr = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, (seq_arr_dim)*sizeof(cl_int), (void*)send_arr, &err); 
 	ocl_check(err, "create buffer ssend arr");
 
-	cl_event final_partition_lmem_evt = final_partition_lmem(resources->que, &k, &m, seq_arr_dim, lws, nwg) ;
+	cl_event final_partition_lmem_evt = final_partition_lmem4(resources->que, &k, &m, seq_arr_dim, lws, nwg) ;
 	clWaitForEvents(1, &final_partition_lmem_evt) ;  
 	unsigned long final_partition_lmem_time = runtime_ns( final_partition_lmem_evt) ; 
-	printf("final partition lmem kernel : %.4gs, %.4gGE/s, %.4gGB/s\n", final_partition_lmem_time/(1.0e9), nels/(double)final_partition_lmem_time/(1.0e9),
-			(nels*sizeof(float))/(double)final_partition_lmem_time/(1.0e9)) ; 
+	printf("final partition lmem kernel : %.4gs\n", final_partition_lmem_time/(1.0e9)) ; 
 
 	quicksort_gpu_end = clock() ; 
 	time_used_gpu = ((double)(quicksort_gpu_end - quicksort_gpu_start))/CLOCKS_PER_SEC ; 
