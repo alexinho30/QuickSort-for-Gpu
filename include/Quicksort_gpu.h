@@ -7,6 +7,7 @@
 #include "../include/random_numbers.h"
 #define MAX_NUM_SEQ 30000000
 #define TEST 1
+#define QUEUE_SIZE 2048
 
 #include<stdio.h>
 #include<unistd.h>
@@ -20,7 +21,7 @@ typedef struct{
 	cl_kernel scan_update ;
 	cl_kernel partitioning ;
 	cl_kernel partitioning_copy ;
-    cl_kernel quicksort_lmem ;    
+    cl_kernel quicksort_lmem4 ;    
 }kernels ; 
 
 typedef struct{
