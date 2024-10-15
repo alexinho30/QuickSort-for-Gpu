@@ -7,6 +7,7 @@
 #include "../include/random_numbers.h"
 
 #define MAX_NUM_SEQ 30000000
+#define QUEUE_SIZE 2048
 
 #include<stdio.h>
 #include<unistd.h>
@@ -36,7 +37,7 @@ typedef struct{
     cl_mem send_arr ; 
 }device_memeory ; 
 
-float* quickSortGpu(const float* vec, const int nels, const int lws, const int nwg_cu, cl_resources* resources, bool test_mode, bool local_memory) ; 
+float* quickSortGpu(const float* vec, const int nels, const int lws, const int nwg_cu, cl_resources* resources, bool test_mode, bool local_memory, bool pruning_lwsx4) ; 
 
 #endif 
 

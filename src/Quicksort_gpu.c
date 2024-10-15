@@ -228,7 +228,7 @@ cl_event final_partition_lmem(cl_command_queue que, kernels* k, device_memeory* 
 	err = clSetKernelArg(k->quicksort_lmem, 6, sizeof(sequence), NULL) ;
 	ocl_check(err, "set kernel local mem sup") ;
 
-	err = clSetKernelArg(k->quicksort_lmem, 7, sizeof(sequence)*1024, NULL) ;
+	err = clSetKernelArg(k->quicksort_lmem, 7, sizeof(sequence)*QUEUE_SIZE, NULL) ;
 	ocl_check(err, "set kernel local mem sup") ;
  
 
@@ -267,7 +267,7 @@ cl_event final_partition_lmem4(cl_command_queue que, kernels* k, device_memeory*
 	err = clSetKernelArg(k->quicksort_lmem4, 6, sizeof(sequence), NULL) ;
 	ocl_check(err, "set kernel local mem sup") ;
 
-	err = clSetKernelArg(k->quicksort_lmem4, 7, sizeof(sequence_)*4096, NULL) ;
+	err = clSetKernelArg(k->quicksort_lmem4, 7, sizeof(sequence_)*QUEUE_SIZE, NULL) ;
 	ocl_check(err, "set kernel local mem sup") ;
  
 
@@ -277,7 +277,7 @@ cl_event final_partition_lmem4(cl_command_queue que, kernels* k, device_memeory*
     return final_partition_lmem_evt; 
 }
 
-float* quickSortGpu(const float* vec,  const int nels, const int lws, const int nwg, cl_resources* resources, bool test_correctness, bool local_memory){
+float* quickSortGpu(const float* vec,  const int nels, const int lws, const int nwg, cl_resources* resources, bool test_correctness, bool local_memory, bool pruning_lwsx4){
 
 	if(resources == NULL){
 		handle_error("resources set to null\n") ; 
@@ -342,6 +342,8 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 	int seq_arr_dim = 0 ;    
 
 	int iteration = 0; 
+
+	int min_seq_len = (pruning_lwsx4) ? lws*4 : lws ;  
 
     while(!is_Empty(&sequences_to_partion)){ 
 
@@ -441,7 +443,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		const int s1_dim = s1.send - s1.sstart + 1 ; 
 		const int s2_dim = s2.send - s2.sstart + 1 ;  
 
-		if((s1_dim > lws*4)){
+		if((s1_dim > min_seq_len)){
 			const int pivot_index = random_uniform_value(0, s1_dim - 1) + s1.sstart; 
 
 			#if 1
@@ -474,7 +476,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 			seq_arr_dim++ ;  
 		}
 
-		if((s2_dim > lws*4)){
+		if((s2_dim > min_seq_len)){
 			const int pivot_index = random_uniform_value(0, s2_dim - 1) + s2.sstart; 
 
 			#if 1
@@ -527,7 +529,15 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 	m.send_arr = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, (seq_arr_dim)*sizeof(cl_int), (void*)send_arr, &err); 
 	ocl_check(err, "create buffer ssend arr");
 
-	cl_event final_partition_lmem_evt = final_partition_lmem4(resources->que, &k, &m, seq_arr_dim, lws, nwg) ;
+	cl_event final_partition_lmem_evt ; 
+
+	if(pruning_lwsx4){
+		final_partition_lmem_evt = final_partition_lmem4(resources->que, &k, &m, seq_arr_dim, lws, nwg) ;
+	}
+	else{
+		final_partition_lmem_evt = final_partition_lmem(resources->que, &k, &m, seq_arr_dim, lws, nwg) ;
+	}
+	
 	clWaitForEvents(1, &final_partition_lmem_evt) ;  
 	unsigned long final_partition_lmem_time = runtime_ns( final_partition_lmem_evt) ; 
 	printf("final partition lmem kernel : %.4gs\n", final_partition_lmem_time/(1.0e9)) ; 
