@@ -511,7 +511,9 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 	clReleaseMemObject(m.bit_map_inf) ;
 	clReleaseMemObject(m.bit_map_sup) ;
 	clReleaseMemObject(m.tails_inf) ;
-	clReleaseMemObject(m.tails_sup) ; 
+	clReleaseMemObject(m.tails_sup) ;
+	clReleaseMemObject(m.sstart_arr) ; 
+	clReleaseMemObject(m.send_arr) ;  
 
 	clReleaseKernel(k.splitting_elements) ; 
 	clReleaseKernel(k.partitioning) ;
