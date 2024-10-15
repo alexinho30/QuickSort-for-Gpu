@@ -243,7 +243,7 @@ cl_event final_partition_lmem4(cl_command_queue que, kernels* k, device_memeory*
 	cl_event final_partition_lmem_evt ; 
 
 	size_t lws[] = {lws_} ; 
-	size_t gws[] = {1*lws[0]} ;
+	size_t gws[] = {nwg*lws[0]} ;
 
 
 	err = clSetKernelArg(k->quicksort_lmem4, 0, sizeof(cl_int), &num_sequences) ;
