@@ -6,6 +6,7 @@
 #include "../include/quicksort_cpu_version.h"
 #include "../include/random_numbers.h"
 #define MAX_NUM_SEQ 30000000
+#define QUEUE_SIZE 2048 
 #define TEST 1
 
 #include<stdio.h>
@@ -20,18 +21,16 @@ typedef struct{
 	cl_kernel scan_update ;
 	cl_kernel partitioning ;
 	cl_kernel partitioning_copy ;   
-    cl_kernel quicksort_lmem ;  
+    cl_kernel quicksort_lmem4 ;  
 }kernels ; 
 
 typedef struct{
     cl_mem in ; 
     cl_mem buff_tmp ; 
-    cl_mem lt ;
     cl_mem bit_map_sup ; 
     cl_mem bit_map_inf ; 
     cl_mem tails_inf ; 
-    cl_mem tails_sup ;
-    cl_mem gt ;  
+    cl_mem tails_sup ; 
     cl_mem sstart_arr ; 
     cl_mem send_arr ; 
 }device_memeory ; 
