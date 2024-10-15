@@ -606,6 +606,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 	clReleaseKernel(k.scan_gpu) ;
 	clReleaseKernel(k.scan_update) ;
 	clReleaseKernel(k.quicksort_lmem) ; 
+	clReleaseKernel(k.quicksort_lmem4) ; 
 
 	return out_copy ; 
 
