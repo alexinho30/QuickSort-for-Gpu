@@ -17,10 +17,12 @@
 
 typedef struct{
     cl_kernel splitting_elements;
+    cl_kernel splitting_elements_vect_4 ; 
 	cl_kernel scan_gpu ; 
 	cl_kernel scan_update ;
 	cl_kernel partitioning ;
-	cl_kernel partitioning_copy ;   
+	cl_kernel partitioning_copy ; 
+    cl_kernel partitioning_copy_vect_4 ;   
     cl_kernel quicksort_lmem4 ;  
 }kernels ; 
 
@@ -35,6 +37,6 @@ typedef struct{
     cl_mem send_arr ; 
 }device_memeory ; 
 
-float* quickSortGpu(const float* vec, const int nels, const int lws, const int nwg_cu, cl_resources* resources, bool test_mode) ; 
+float* quickSortGpu(const float* vec, const int nels, const int lws, const int nwg_cu, cl_resources* resources, const bool test_mode, const bool vect_4) ; 
 
 #endif 

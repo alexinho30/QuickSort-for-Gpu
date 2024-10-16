@@ -1,32 +1,35 @@
 #include "../include/Quicksort_gpu.h"
 
 cl_event split_elements(cl_command_queue q, kernels* k, device_memeory* m , cl_int nels, cl_int sstart,
-	cl_int lws_, cl_float pivot, const int nwg){
+	cl_int lws_, cl_float pivot, const int nwg, const bool vect_4){
+	
+	cl_kernel splitting_elementes_ker = (vect_4) ? k->splitting_elements_vect_4 : k->splitting_elements ; 
+
 	size_t lws[] = {lws_} ; 
 	size_t gws[] = {nwg*lws[0]};
 	 
 	cl_int err ; 
 	cl_event evt_split_elements ;
 
-	err = clSetKernelArg(k->splitting_elements, 0, sizeof(cl_int), &nels) ;
+	err = clSetKernelArg(splitting_elementes_ker, 0, sizeof(cl_int), &nels) ;
 	ocl_check(err, "set kernel nels ") ;
 
-	err = clSetKernelArg(k->splitting_elements, 1, sizeof(cl_int), &sstart) ;
+	err = clSetKernelArg(splitting_elementes_ker, 1, sizeof(cl_int), &sstart) ;
 	ocl_check(err, "set kernel sstart ") ;
 
-	err = clSetKernelArg(k->splitting_elements, 2, sizeof(m->in), &m->in) ;
+	err = clSetKernelArg(splitting_elementes_ker, 2, sizeof(m->in), &m->in) ;
 	ocl_check(err, "set kernel d_buf") ;
 
-	err = clSetKernelArg(k->splitting_elements, 3, sizeof(pivot), &pivot) ;
+	err = clSetKernelArg(splitting_elementes_ker, 3, sizeof(pivot), &pivot) ;
 	ocl_check(err, "set kernel pivot") ;
 
-	err = clSetKernelArg(k->splitting_elements, 4, sizeof(m->bit_map_sup), &m->bit_map_sup) ;
+	err = clSetKernelArg(splitting_elementes_ker, 4, sizeof(m->bit_map_sup), &m->bit_map_sup) ;
 	ocl_check(err, "set kernel bit_array_sup") ;
 
-	err = clSetKernelArg(k->splitting_elements, 5, sizeof(m->bit_map_inf), &m->bit_map_inf) ;
+	err = clSetKernelArg(splitting_elementes_ker, 5, sizeof(m->bit_map_inf), &m->bit_map_inf) ;
 	ocl_check(err, "set kernel bit_array_inf") ;
 
-	err = clEnqueueNDRangeKernel(q, k->splitting_elements, 1, NULL, gws, lws, 0, NULL, &evt_split_elements) ;
+	err = clEnqueueNDRangeKernel(q, splitting_elementes_ker, 1, NULL, gws, lws, 0, NULL, &evt_split_elements) ;
     ocl_check(err, "enqueue split elements kernel") ; 
 
     return evt_split_elements;
@@ -143,27 +146,28 @@ cl_event partition(cl_command_queue q, kernels* k, device_memeory* m, cl_int lt,
 }
 
 cl_event partition_copy(cl_command_queue que, kernels* k, device_memeory* m, const int sstart, 
-const int nels, const int lws_, const int nwg){
+const int nels, const int lws_, const int nwg, const bool vect_4){
 
+	cl_kernel partition_copy_ker = (vect_4) ? k->partitioning_copy_vect_4 : k->partitioning_copy ; 
 	cl_int err ; 
 	cl_event partition_evt ; 
 
 	size_t lws[] = {lws_} ; 
 	size_t gws[] = {nwg*lws[0]} ; 
 
-	err = clSetKernelArg(k->partitioning_copy, 0, sizeof(cl_int), &nels) ;
+	err = clSetKernelArg(partition_copy_ker, 0, sizeof(cl_int), &nels) ;
 	ocl_check(err, "set kernel nels ") ;
 
-	err = clSetKernelArg(k->partitioning_copy, 1, sizeof(cl_int), &sstart) ;
+	err = clSetKernelArg(partition_copy_ker, 1, sizeof(cl_int), &sstart) ;
 	ocl_check(err, "set kernel seq ") ;
 
-	err = clSetKernelArg(k->partitioning_copy, 2, sizeof(m->in), &m->in) ;
+	err = clSetKernelArg(partition_copy_ker, 2, sizeof(m->in), &m->in) ;
 	ocl_check(err, "set kernel in") ;
 
-	err = clSetKernelArg(k->partitioning_copy, 3, sizeof(m->buff_tmp), &m->buff_tmp) ;
+	err = clSetKernelArg(partition_copy_ker, 3, sizeof(m->buff_tmp), &m->buff_tmp) ;
 	ocl_check(err, "set kernel out") ;
 
-	err = clEnqueueNDRangeKernel(que,  k->partitioning_copy, 1, NULL, gws, lws, 0, NULL, &partition_evt) ;
+	err = clEnqueueNDRangeKernel(que,  partition_copy_ker, 1, NULL, gws, lws, 0, NULL, &partition_evt) ;
     ocl_check(err, "enqueue partition copy kernel") ; 
 
     return partition_evt; 
@@ -209,7 +213,7 @@ cl_event final_partition_lmem4(cl_command_queue que, kernels* k, device_memeory*
     return final_partition_lmem_evt; 
 }
 
-float* quickSortGpu(const float* vec,  const int nels, const int lws, const int nwg, cl_resources* resources, bool test_correctness){
+float* quickSortGpu(const float* vec,  const int nels, const int lws, const int nwg, cl_resources* resources, const bool test_correctness, const bool vect_4){
 
 	if(resources == NULL){
 		handle_error("resources set to null\n") ; 
@@ -229,6 +233,8 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 
 	k.splitting_elements = clCreateKernel(resources->prog, "split_elements", &err);	
 	ocl_check(err, "create kernel split_elements");
+	k.splitting_elements_vect_4 = clCreateKernel(resources->prog, "split_elements_vect_4", &err);	
+	ocl_check(err, "create kernel split_elements_vect4");
 	k.scan_gpu = clCreateKernel(resources->prog, "scan", &err);	
 	ocl_check(err, "create kernel scan");
 	k.scan_update = clCreateKernel(resources->prog, "scan_update", &err);	
@@ -237,6 +243,8 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 	ocl_check(err, "create kernel partitioning");
 	k.partitioning_copy = clCreateKernel(resources->prog, "partition_copy", &err);	
 	ocl_check(err, "create kernel partitioning copy");
+	k.partitioning_copy_vect_4 = clCreateKernel(resources->prog, "partition_copy_vect_4", &err);	
+	ocl_check(err, "create kernel partitioning_copy_vect_4");
 	k.quicksort_lmem4 = clCreateKernel(resources->prog, "quicksort_lmem4", &err);	
 	ocl_check(err, "create kernel quicksort_lmem");
 
@@ -288,9 +296,17 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		}
 		
 		if(current_nwg_scan <= 1) current_nwg_scan=2 ; 
-		if(!current_nwg_split_partion) current_nwg_split_partion++ ; 
+		if(!current_nwg_split_partion) current_nwg_split_partion++ ;
 
-        cl_event evt_split_elements = split_elements(resources->que, &k, &m, current_nels, curr_seq.sstart, lws, curr_seq.pivot_value, current_nwg_split_partion) ; 
+		cl_event evt_split_elements ; 
+
+		if(vect_4){
+			evt_split_elements = split_elements(resources->que, &k, &m, current_nels, curr_seq.sstart, lws, curr_seq.pivot_value, current_nwg_split_partion, true) ; 
+		}
+		else{
+			evt_split_elements = split_elements(resources->que, &k, &m, current_nels, curr_seq.sstart, lws, curr_seq.pivot_value, current_nwg_split_partion, false) ; 
+		} 
+
 
 		clWaitForEvents(1, &evt_split_elements) ;
 
@@ -346,8 +362,16 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		cl_event partition_evt = partition(resources->que, &k,  &m, sum_lt, sum_gt, curr_seq, current_nels, lws, current_nwg_split_partion) ; 
 		clWaitForEvents(1, &partition_evt) ;
 
-		cl_event partition_copy_evt = partition_copy(resources->que, &k, &m, curr_seq.sstart, current_nels, lws, current_nwg_split_partion) ;
-		clWaitForEvents(1, &partition_copy_evt) ; 
+		cl_event partition_copy_evt ; 
+
+		if(vect_4){
+			partition_copy_evt = partition_copy(resources->que, &k, &m, curr_seq.sstart, current_nels, lws, current_nwg_split_partion, true) ;
+			clWaitForEvents(1, &partition_copy_evt) ; 
+		}
+		else{
+			partition_copy_evt = partition_copy(resources->que, &k, &m, curr_seq.sstart, current_nels, lws, current_nwg_split_partion, false) ;
+			clWaitForEvents(1, &partition_copy_evt) ;
+		}
 
 		sequence s1, s2 ; 
 
@@ -515,8 +539,11 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 	clReleaseMemObject(m.sstart_arr) ; 
 	clReleaseMemObject(m.send_arr) ;  
 
-	clReleaseKernel(k.splitting_elements) ; 
+	clReleaseKernel(k.splitting_elements) ;
+	clReleaseKernel(k.splitting_elements_vect_4) ;  
 	clReleaseKernel(k.partitioning) ;
+	clReleaseKernel(k.partitioning_copy) ; 
+	clReleaseKernel(k.partitioning_copy_vect_4) ; 
 	clReleaseKernel(k.scan_gpu) ;
 	clReleaseKernel(k.scan_update) ;
 	clReleaseKernel(k.quicksort_lmem4) ; 

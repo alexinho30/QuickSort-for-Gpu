@@ -11,9 +11,10 @@ typedef struct{
     int send ;
 }sequence_ ; 
 
+
+
 kernel void split_elements(const int nels, const int sstart, global const float * restrict in,  
-const float pivot,  
-global int* bit_array_sup, global int* bit_array_inf
+const float pivot, global int* bit_array_sup, global int* bit_array_inf
 ){
     int i = get_global_id(0) ; 
     const int gs = get_global_size(0) ;  
@@ -34,6 +35,52 @@ global int* bit_array_sup, global int* bit_array_inf
             bit_array_inf[i] = 0 ;  
         }
 
+        i += gs ;
+    }
+}
+
+kernel void split_elements_vect_4(const int nels, const int sstart, global const float4 * restrict in,  
+const float pivot, global int* bit_array_sup, global int* bit_array_inf){
+    const int li = get_local_id(0) ; 
+    const int gi = get_group_id(0) ;
+    const int gs = get_global_size(0) ; 
+    int i = get_global_id(0) ;
+
+    const int send = nels + sstart - 1; 
+    const int left_offset = ((sstart/4)*4) ; 
+    const int right_offset = (((send +1)/4)*4 == send + 1) ? send : ((send + 4)/4)*4 - 1 ; 
+    const int nquarts  = (right_offset - left_offset + 1)/4 ;  
+
+    int v_sup = 0 ;
+    int v_inf = 0 ;
+    float s[4] ; 
+
+    while(i < nquarts){
+
+        float4 v = in[left_offset/4 + i] ;
+
+        float s[4] = {v.s0, v.s1, v.s2, v.s3} ; 
+
+        const int start_offset = (i == 0) ? (sstart - left_offset) : 0 ; 
+        const int end_offset = (i == nquarts - 1) ? 4 - (right_offset - send) : 4 ; 
+        
+        #pragma unroll
+        for(int t = start_offset; t < end_offset ; t++){
+            const int idx = i*4 + t - (sstart - left_offset); 
+
+            if(s[t] < pivot){
+                bit_array_inf[idx] = 1 ;  
+                bit_array_sup[idx] = 0 ;  
+            }
+            else if(s[t] > pivot){
+                bit_array_sup[idx] = 1 ;
+                bit_array_inf[idx] = 0 ;  
+            } 
+            else{
+                bit_array_sup[idx] = 0 ; 
+                bit_array_inf[idx] = 0 ;  
+            }
+        }
         i += gs ;
     }
 }
@@ -193,7 +240,32 @@ kernel void partition_copy(const int nels, const int sstart, global float* restr
         in[i + sstart] = v ; 
         i+=get_global_size(0) ; 
     }  
+}
 
+kernel void partition_copy_vect_4(const int nels, const int sstart, global float* restrict in, global float4* restrict out){
+
+    int i =  get_global_id(0) ; 
+
+    const int send = nels + sstart - 1; 
+    const int left_offset = ((sstart/4)*4) ; 
+    const int right_offset = (((send +1)/4)*4 == send + 1) ? send : ((send + 4)/4)*4 - 1 ; 
+    const int nquarts  = (right_offset - left_offset + 1)/4 ; 
+
+    while(i < nquarts){
+        float4 v = out[i + left_offset/4] ;
+        float s[4] = {v.s0, v.s1, v.s2, v.s3} ; 
+
+        const int start_offset = (i == 0) ? sstart - left_offset : 0 ; 
+        const int end_offset = (i == nquarts - 1) ? 4 - (right_offset - send) : 4 ; 
+
+        #pragma unroll
+        for(int t = start_offset ; t < end_offset ; t++){
+            const int idx = i*4 + t - (sstart - left_offset) ; 
+            if(idx < 0) printf("err") ; 
+            in[idx + sstart] = s[t] ;
+        } 
+        i+=get_global_size(0) ; 
+    }  
 }
 
 kernel void quicksort_lmem4(const int nsequences, global float* restrict in, global const int* restrict sstart_arr, global const int* restrict send_arr,
