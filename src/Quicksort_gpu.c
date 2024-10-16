@@ -234,8 +234,8 @@ cl_event final_partition_lmem4(cl_command_queue que, kernels* k, device_memeory*
     return final_partition_lmem_evt; 
 }
 
-float median_computation(cl_resources* resources, kernels* k, device_memeory*m, int seq_sstart, int seq_send, 
-	int lws, const int nwg){
+float median_computation(cl_resources* resources, kernels* k, device_memeory*m, const int seq_sstart, const int seq_send, 
+	const int lws, const int nwg){
 
 	cl_int err ;  
 
@@ -423,7 +423,7 @@ float median_computation(cl_resources* resources, kernels* k, device_memeory*m, 
 }
 
 
-float* quickSortGpu(const float* vec,  const int nels, const int lws, const int nwg, cl_resources* resources, bool test_correctness){
+float* quickSortGpu(const float* vec,  const int nels, const int lws, const int nwg, cl_resources* resources, const bool test_correctness){
 
 	if(resources == NULL){
 		handle_error("resources set to null\n") ; 
@@ -460,10 +460,6 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 	ocl_check(err, "create buffer d_buf");
 	m.buff_tmp = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR , (nels)*sizeof(cl_float), NULL, &err);
 	ocl_check(err, "create buffer lt");
-	m.lt = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR , (nwg)*sizeof(cl_int), NULL, &err);
-	ocl_check(err, "create buffer lt");
-	m.gt = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, (nwg)*sizeof(cl_int), NULL, &err);
-	ocl_check(err, "create buffer gt"); 
 	m.bit_map_sup = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR , nels*sizeof(cl_int), NULL, &err);
 	ocl_check(err, "create buffer bit map sup");
 	m.bit_map_inf = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR , nels*sizeof(cl_int), NULL, &err);
@@ -676,8 +672,6 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		
 	clReleaseMemObject(m.in) ;
 	clReleaseMemObject(m.buff_tmp) ;
-	clReleaseMemObject(m.gt) ;
-	clReleaseMemObject(m.lt) ;
 	clReleaseMemObject(m.bit_map_inf) ;
 	clReleaseMemObject(m.bit_map_sup) ;
 	clReleaseMemObject(m.tails_inf) ;
@@ -687,6 +681,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 
 	clReleaseKernel(k.splitting_elements) ; 
 	clReleaseKernel(k.partitioning) ;
+	clReleaseKernel(k.partitioning_copy) ;
 	clReleaseKernel(k.scan_gpu) ;
 	clReleaseKernel(k.scan_update) ;
 	clReleaseKernel(k.quicksort_lmem4) ; 
