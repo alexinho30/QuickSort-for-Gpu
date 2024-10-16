@@ -37,7 +37,7 @@ typedef struct{
     cl_mem send_arr ; 
 }device_memeory ; 
 
-float* quickSortGpu(const float* vec, const int nels, const int lws, const int nwg_cu, cl_resources* resources, bool test_mode, bool local_memory, bool pruning_lwsx4) ; 
+float* quickSortGpu(const float* vec, const int nels, const int lws, const int nwg_cu, cl_resources* resources, const bool test_mode, const bool local_memory, const bool pruning_lwsx4) ; 
 
 #endif 
 

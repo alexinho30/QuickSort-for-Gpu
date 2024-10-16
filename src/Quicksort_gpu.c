@@ -277,7 +277,7 @@ cl_event final_partition_lmem4(cl_command_queue que, kernels* k, device_memeory*
     return final_partition_lmem_evt; 
 }
 
-float* quickSortGpu(const float* vec,  const int nels, const int lws, const int nwg, cl_resources* resources, bool test_correctness, bool local_memory, bool pruning_lwsx4){
+float* quickSortGpu(const float* vec,  const int nels, const int lws, const int nwg, cl_resources* resources, const bool test_correctness, const bool local_memory, const bool pruning_lwsx4){
 
 	if(resources == NULL){
 		handle_error("resources set to null\n") ; 
@@ -603,6 +603,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 
 	clReleaseKernel(k.splitting_elements) ; 
 	clReleaseKernel(k.partitioning) ;
+	clReleaseKernel(k.partitioning_copy) ;
 	clReleaseKernel(k.scan_gpu) ;
 	clReleaseKernel(k.scan_update) ;
 	clReleaseKernel(k.quicksort_lmem) ; 
