@@ -166,6 +166,7 @@ cl_program create_program(const char * const fname, cl_context ctx,
 
 
 void create_resources(cl_resources* resources, const char *const  ocl_filename){
+	printf("okkk") ; 
 	resources->p = select_platform() ; 
 	resources->d = select_device(resources->p) ;
 	resources->ctx = create_context(resources->p, resources->d) ; 

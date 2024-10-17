@@ -22,8 +22,6 @@ typedef struct{
 	cl_kernel scan_update ;
 	cl_kernel partitioning ;
 	cl_kernel partitioning_copy ; 
-    cl_kernel quicksort_lmem ;
-    cl_kernel quicksort_lmem4 ; 
 }kernels ; 
 
 typedef struct{
@@ -33,11 +31,9 @@ typedef struct{
     cl_mem bit_map_inf ; 
     cl_mem tails_inf ; 
     cl_mem tails_sup ; 
-    cl_mem sstart_arr ; 
-    cl_mem send_arr ; 
 }device_memeory ; 
 
-float* quickSortGpu(const float* vec, const int nels, const int lws, const int nwg_cu, cl_resources* resources, const bool test_mode, const bool local_memory, const bool pruning_lwsx4) ; 
+float* quickSortGpu(const float* vec, const int nels, const int lws, const int nwg_cu, cl_resources* resources, const bool test_mode) ; 
 
 #endif 
 

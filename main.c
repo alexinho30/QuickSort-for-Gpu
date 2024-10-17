@@ -9,9 +9,11 @@ int main(int argc, char* const* argv){
 	char in_file[BUFSIZE], out_file[BUFSIZE] ; 
 	int opt, d = 1, nels = 10000, seed = 21 , lws = 256, nwg_cu = 4; 
 	float p1, p2 ;  
-	bool test_mode = false, local_memory = false, pruning_lwsx4 = false; 
+	bool test_mode = false ; 
 
-	while((opt = getopt(argc, argv, ":l:g:i:o:tmxn:s:d:p:r:")) != -1){
+	printf("ok\n") ; 
+
+	while((opt = getopt(argc, argv, ":l:g:i:o:tn:s:d:p:r:")) != -1){
 		switch(opt){
 			case 'l':
 				lws = atoi(optarg) ; 
@@ -32,15 +34,7 @@ int main(int argc, char* const* argv){
 			case 't':
 				test_mode = true ; 
 				break ;
-			
-			case 'm':
-				local_memory = true ; 
-				break ; 
-
-			case 'x':
-				pruning_lwsx4 = true ; 
-				break ; 
-
+		
 			case 's':
 				seed = atoi(optarg) ;
 				if(seed < 1){
@@ -84,7 +78,7 @@ int main(int argc, char* const* argv){
 	cl_int err = 0 , ncu = 0 ;  
 
 	cl_resources resource ; 
-	create_resources(&resource, "quickSort.ocl") ; 
+	create_resources(&resource, "quickSort.ocl--") ; 
 
 
 	err = clGetDeviceInfo(resource.d, CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(ncu), &ncu, NULL);
@@ -117,12 +111,12 @@ int main(int argc, char* const* argv){
 				break ;    
 		}
 
-		quickSortGpu(vec, nels, lws, nwg, &resource, test_mode, local_memory, pruning_lwsx4) ; 
+		quickSortGpu(vec, nels, lws, nwg, &resource, test_mode) ; 
 	}
 	else{
 
 		vec = read_array_from_file( &nels, in_file) ;
-		float*out_vec = quickSortGpu(vec, nels, lws, nwg, &resource, test_mode, local_memory, pruning_lwsx4) ;
+		float*out_vec = quickSortGpu(vec, nels, lws, nwg, &resource, test_mode) ;
 		write_array_on_file(out_vec, nels, out_file) ; 
  
 		free(out_vec) ; 
