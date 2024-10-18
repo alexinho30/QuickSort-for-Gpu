@@ -498,7 +498,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 
 	if(test_correctness){
 
-		bench_mark(t, iteration, s, lws) ;
+		bench_mark(t, iteration, s, lws, seq_arr_dim) ;
 
 		float*vec_to_sort_on_cpu =  calloc(nels, sizeof(float)) ;
 
