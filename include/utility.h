@@ -32,8 +32,7 @@ void copy_vec(const float* vec, float* vec_copy, const int start, const int end)
 
 void check_result(const float* vec, const float* vec_copy, const int nels) ; 
 
-void bench_mark(times* t, const int iteration, const sequences_info* s, const int lws ) ; 
-
+void bench_mark(times* t, const int iteration, const sequences_info* s, const int lws, const int count_small_sequence, const int count_big_sequences ) ; 
 void write_array_on_file(float* vec, const int nels, const char* const file_name) ; 
 
 float* read_array_from_file(int* nels, const char* const file_name) ; 

@@ -216,7 +216,9 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 	enqueue(&sequences_to_partion, &start_sequence) ;
    
 
-	int iteration = 0; 
+	int iteration = 0;
+	int count_small_sequences = 0 ;
+	int count_big_sequences = 0 ;   
 
     while(!is_Empty(&sequences_to_partion)){ 
 
@@ -365,6 +367,12 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		}
 
 		if(test_correctness){
+			if(current_nels < 5){
+				count_small_sequences++ ; 
+			}
+			if(current_nels >= nels/16){
+				count_big_sequences++ ; 
+			}
 			t[iteration].split_elements_time = runtime_ns(evt_split_elements) ;
 			t[iteration].partial_scan_time = runtime_ns(scan_evt[0]) ; 
 			t[iteration].scan_tails_time = runtime_ns(scan_evt[1]) ; 
@@ -393,7 +401,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 
 	if(test_correctness){
 
-		bench_mark(t, iteration, s, lws) ;
+		bench_mark(t, iteration, s, lws, count_small_sequences, count_big_sequences) ;
 
 		float*vec_to_sort_on_cpu =  calloc(nels, sizeof(float)) ;
 
