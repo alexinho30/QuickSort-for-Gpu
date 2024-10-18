@@ -78,7 +78,7 @@ int main(int argc, char* const* argv){
 	cl_int err = 0 , ncu = 0 ;  
 
 	cl_resources resource ; 
-	create_resources(&resource, "quickSort.ocl--") ; 
+	create_resources(&resource, "quickSort.ocl") ; 
 
 
 	err = clGetDeviceInfo(resource.d, CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(ncu), &ncu, NULL);

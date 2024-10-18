@@ -17,7 +17,6 @@
 
 typedef struct{
     cl_kernel splitting_elements;
-	cl_kernel scan_gpu_lmem ;
     cl_kernel scan_gpu ;  
 	cl_kernel scan_update ;
 	cl_kernel partitioning ;

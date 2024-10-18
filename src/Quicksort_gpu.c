@@ -169,7 +169,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 	}
 
 	times* t = calloc(MAX_NUM_SEQ, sizeof(times)) ; 
-	sequences_info* s = calloc(MAX_NUM_SEQ, sizeof(sequences_info)) ; 
+	sequences_info* s = calloc(MAX_NUM_SEQ, sizeof(sequences_info)) ;
 
 	time_t quicksort_gpu_start, quicksort_gpu_end ; 
 	double time_used_gpu ; 
@@ -182,10 +182,8 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 
 	k.splitting_elements = clCreateKernel(resources->prog, "split_elements", &err);	
 	ocl_check(err, "create kernel split_elements");
-	k.scan_gpu_lmem = clCreateKernel(resources->prog, "scan_lmem", &err);	
-	ocl_check(err, "create kernel scan_lmem");
 	k.scan_gpu = clCreateKernel(resources->prog, "scan", &err);	
-	ocl_check(err, "create kernel scan_lmem");
+	ocl_check(err, "create kernel scan_gpu");
 	k.scan_update = clCreateKernel(resources->prog, "scan_update", &err);	
 	ocl_check(err, "create kernel scan_update");
 	k.partitioning = clCreateKernel(resources->prog, "partition", &err);	
@@ -311,7 +309,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		const int s1_dim = s1.send - s1.sstart + 1 ; 
 		const int s2_dim = s2.send - s2.sstart + 1 ;  
 
-		if((s1_dim > 2)){
+		if((s1_dim > 1)){
 			const int pivot_index = random_uniform_value(0, s1_dim - 1) + s1.sstart; 
 
 			#if 1
@@ -339,7 +337,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 			enqueue(&sequences_to_partion, &s1) ; 
 		}
 
-		if((s2_dim > 2)){
+		if((s2_dim > 1)){
 			const int pivot_index = random_uniform_value(0, s2_dim - 1) + s2.sstart; 
 
 			#if 1
