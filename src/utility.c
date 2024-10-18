@@ -33,7 +33,7 @@ void check_result(const float* vec, const float* vec_copy, const int nels){
 	}
 }
 
-void bench_mark(times* t, const int num_iteration, const sequences_info* s, const int lws ){
+void bench_mark(times* t, const int num_iteration, const sequences_info* s, const int lws, const int seq_arr_dim ){
 
 	time_t current_time ;  
 	time(&current_time) ; 
@@ -75,6 +75,9 @@ void bench_mark(times* t, const int num_iteration, const sequences_info* s, cons
 			t[iteration].partition_copy_time, 2*s[iteration].current_nels/(double)t[iteration].partition_copy_time, 
 			sizeof(cl_float)*2*s[iteration].current_nels/(double)t[iteration].partition_copy_time) ;
 	}
+
+	fprintf(f, "\nnum_seq_lws<_dim : %d\n", seq_arr_dim) ; 
+
 
 	if(fclose(f) < 0){
 		handle_error("error on closing benchmarking file\n") ; 
