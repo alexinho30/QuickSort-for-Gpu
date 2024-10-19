@@ -92,10 +92,6 @@ int main(int argc, char* const* argv){
 				break ; 
 
 			case 2:
-				binom_distr_arr(vec, nels, p1, p2) ;
-				break ; 
-
-			case 3:
 				unif_distr_arr(vec, nels, p1, p2) ;
 				break ;    
 		}

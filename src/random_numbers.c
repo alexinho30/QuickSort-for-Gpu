@@ -34,20 +34,6 @@ float random_uniform_zero_one(){
     return  ((double)(rand()) + 1. )/( (double)(RAND_MAX) + 1. );
 }
 
-float binomial_distribution_value(const int n, const float p){
-
-    float binom_value = 0 ; 
-
-    for(int i = 0 ; i < n ; i++){
-        float r = random_uniform_zero_one() ; 
-        if(r < p){
-            binom_value++ ; 
-        }
-    }
-
-    return binom_value ; 
-}
-
 float normal_value(float mu, float sigma){
     double x1=random_uniform_zero_one();
     double x2=random_uniform_zero_one();
@@ -57,12 +43,6 @@ float normal_value(float mu, float sigma){
 void normal_distr_arr(float* arr, const int nels, float mu, float sigma){
     for(int i = 0 ; i < nels ; i++){
         arr[i] = normal_value(mu, sigma) ; 
-    }
-}
-
-void binom_distr_arr(float* arr, const int nels, const int n, const float p){
-    for(int i = 0 ; i < nels ; i++){
-        arr[i] = binomial_distribution_value(n, p) ; 
     }
 }
 
