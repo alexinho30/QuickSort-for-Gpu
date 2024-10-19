@@ -108,11 +108,6 @@ int main(int argc, char* const* argv){
 
 			case 2:
 				printf("p1 : %f p2 : %f \n", p1, p2) ; 
-				binom_distr_arr(vec, nels, p1, p2) ;
-				break ; 
-
-			case 3:
-				printf("p1 : %f p2 : %f \n", p1, p2) ; 
 				unif_distr_arr(vec, nels, p1, p2) ;
 				break ;    
 		}
