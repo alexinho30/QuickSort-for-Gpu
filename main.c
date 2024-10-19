@@ -45,7 +45,7 @@ int main(int argc, char* const* argv){
 			
 			case 'd':
 				d = atoi(optarg) ;
-				if(d <1 || d > 4){
+				if(d <1 || d > 3){
 					fprintf(stderr, "d must be  between 1 and 4\n") ; 
 					exit(EXIT_FAILURE) ; 
 				}
@@ -101,11 +101,6 @@ int main(int argc, char* const* argv){
 				break ; 
 
 			case 2:
-				printf("p1 : %f p2 : %f \n", p1, p2) ; 
-				binom_distr_arr(vec, nels, p1, p2) ;
-				break ; 
-
-			case 3:
 				printf("p1 : %f p2 : %f \n", p1, p2) ; 
 				unif_distr_arr(vec, nels, p1, p2) ;
 				break ;    
