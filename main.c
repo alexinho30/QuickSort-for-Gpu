@@ -40,7 +40,7 @@ int main(int argc, char* const* argv){
 			
 			case 'd':
 				d = atoi(optarg) ;
-				if(d <1 || d > 4){
+				if(d <1 || d > 3){
 					fprintf(stderr, "d must be  between 1 and 4\n") ; 
 					exit(EXIT_FAILURE) ; 
 				}
