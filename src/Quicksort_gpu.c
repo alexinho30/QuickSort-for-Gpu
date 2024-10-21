@@ -225,13 +225,6 @@ cl_event final_partition_lmem(cl_command_queue que, kernels* k, device_memeory* 
 	err = clSetKernelArg(k->quicksort_lmem, 5, sizeof(cl_int)*lws[0], NULL) ;
 	ocl_check(err, "set kernel local mem sup") ;
 
-	err = clSetKernelArg(k->quicksort_lmem, 6, sizeof(sequence), NULL) ;
-	ocl_check(err, "set kernel local mem sup") ;
-
-	err = clSetKernelArg(k->quicksort_lmem, 7, sizeof(sequence)*QUEUE_SIZE, NULL) ;
-	ocl_check(err, "set kernel local mem sup") ;
- 
-
 	err = clEnqueueNDRangeKernel(que,  k->quicksort_lmem, 1, NULL, gws, lws, 0, NULL, &final_partition_lmem_evt) ;
     ocl_check(err, "enqueue partition copy kernel") ; 
 
@@ -263,13 +256,6 @@ cl_event final_partition_lmem4(cl_command_queue que, kernels* k, device_memeory*
 
 	err = clSetKernelArg(k->quicksort_lmem4, 5, sizeof(cl_int)*lws[0], NULL) ;
 	ocl_check(err, "set kernel local mem sup") ;
-
-	err = clSetKernelArg(k->quicksort_lmem4, 6, sizeof(sequence), NULL) ;
-	ocl_check(err, "set kernel local mem sup") ;
-
-	err = clSetKernelArg(k->quicksort_lmem4, 7, sizeof(sequence_)*QUEUE_SIZE, NULL) ;
-	ocl_check(err, "set kernel local mem sup") ;
- 
 
 	err = clEnqueueNDRangeKernel(que,  k->quicksort_lmem4, 1, NULL, gws, lws, 0, NULL, &final_partition_lmem_evt) ;
     ocl_check(err, "enqueue partition copy kernel") ; 
@@ -394,7 +380,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		last_value = clEnqueueMapBuffer(resources->que, m.in, CL_TRUE,
 					CL_MAP_READ | CL_MAP_WRITE,  (curr_seq.sstart +current_nels - 1)*sizeof(cl_float), sizeof(cl_float),
 						0, NULL, &read_evt_last_value, &err) ; 
-		ocl_check(err, "read buffer lt") ; 
+		ocl_check(err, "read buffer last value") ; 
 
 		gt = clEnqueueMapBuffer(resources->que, m.bit_map_sup, CL_TRUE,
 					CL_MAP_READ | CL_MAP_WRITE, (current_nels - 1)*sizeof(cl_int), sizeof(cl_int),
@@ -417,7 +403,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		cl_event unmap_evt_last_value;
 		err = clEnqueueUnmapMemObject(resources->que, m.in, last_value,
 					1, &read_evt_last_value, &unmap_evt_last_value);
-		ocl_check(err, "unmap gt");
+		ocl_check(err, "unmap last value");
 
 		cl_event partition_evt = partition(resources->que, &k,  &m, curr_seq, current_nels, sum_lt, sum_gt, lws, current_nwg) ; 
 		clWaitForEvents(1, &partition_evt) ;
@@ -509,19 +495,19 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		}
 
 		if(test_correctness){
-			t[iteration].split_elements_time = runtime_ns(evt_split_elements) ;
-			t[iteration].partial_scan_time = runtime_ns(scan_evt[0]) ; 
-			t[iteration].scan_tails_time = runtime_ns(scan_evt[1]) ; 
-			t[iteration].scan_update_time = runtime_ns(scan_evt[2]) ; 
-			t[iteration].partition_time = runtime_ns(partition_evt) ; 
-			t[iteration].partition_copy_time = runtime_ns(partition_copy_evt) ; 
+			t[iteration].split_elements_time = runtime_ms(evt_split_elements) ;
+			t[iteration].partial_scan_time = runtime_ms(scan_evt[0]) ; 
+			t[iteration].scan_tails_time = runtime_ms(scan_evt[1]) ; 
+			t[iteration].scan_update_time = runtime_ms(scan_evt[2]) ; 
+			t[iteration].partition_time = runtime_ms(partition_evt) ; 
+			t[iteration].partition_copy_time = runtime_ms(partition_copy_evt) ; 
 			s[iteration].current_nels = current_nels ; 
 			s[iteration].current_nwg = current_nwg ; 
 			iteration++; 
 		}
     }  
 
-	printf("ended firsh phase\n") ; 
+	printf("ended first phase...\n") ; 
 	fflush(stdout) ; 
 
 	m.sstart_arr = clCreateBuffer(resources->ctx, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, (seq_arr_dim)*sizeof(cl_int), (void*)sstart_arr, &err); 

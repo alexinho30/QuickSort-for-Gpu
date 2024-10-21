@@ -10,11 +10,6 @@ typedef struct{
 	float pivot_value ; 	
 } sequence;
 
-typedef struct{
-	int sstart ;
-	int send ;	
-} sequence_;
-
 typedef struct {
     sequence *arr ;
     int cur_size ;

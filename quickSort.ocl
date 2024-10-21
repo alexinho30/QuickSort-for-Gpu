@@ -3,18 +3,35 @@
 typedef struct{
     int sstart ; 
     int send ; 
-    float pivot_value; 
+    float pivot_value ; 
 }sequence ; 
 
-typedef struct{
-    int sstart ; 
-    int send ; 
-}sequence_ ; 
+
+kernel void init_vec_norm(global float* restrict in, global const float* restrict rand_values, const int nels, 
+    const float mu, const float sigma){
+
+    const int i = get_global_id(0) ; 
+
+    const float x1 = rand_values[i] ; 
+    const float x2 = (i == nels -1) ? rand_values[0] : rand_values[i] ; 
+
+    const float n1 = cos(2*3.14*x2)*sqrt(-2.*log(x1)) ;
+    in[i] = sigma*n1 + mu ;  
+}
+
+kernel void init_vec_uniform(global float* restrict in, global const float* restrict rand_values, const int nels, 
+    const float start, const float end){
+
+    const int i = get_global_id(0) ; 
+
+    const float x1 = rand_values[i] ; 
+    in[i] = x1*(end - start) + start ; 
+}
 
 
 
 kernel void split_elements(const int nels, const int sstart, global const float * restrict in,  
-const float pivot, global int* bit_array_sup, global int* bit_array_inf
+const float pivot, global int* restrict bit_array_sup, global int* restrict bit_array_inf
 ){
     int i = get_global_id(0) ; 
     const int gs = get_global_size(0) ;  
@@ -201,13 +218,19 @@ kernel void partition_copy(const int nels, const int sstart, global float* restr
     }  
 }
 
-kernel void quicksort_lmem(const int nsequences, global float* restrict in, global const int* restrict sstart_arr, global const int* restrict send_arr,
-    local int* bit_array_inf, local int* bit_array_sup, local sequence* next_sequence, local sequence* sequences_to_process){
+kernel void quicksort_lmem(const int nsequences, global float* restrict in, global const int* restrict sstart_arr,
+ global const int* restrict send_arr, local int* bit_array_inf, local int* bit_array_sup){
 
-        int i = get_global_id(0) ; 
-        int li = get_local_id(0) ;
+        const int li = get_local_id(0) ;
         int gi = get_group_id(0) ; 
         const int num_work_groups = get_num_groups(0) ;
+
+        local int next_sstart ;
+        local int next_send ; 
+        local float next_pivot ; 
+
+        local int queue_sstart[QUEUE_SIZE] ; 
+        local int queue_send[QUEUE_SIZE] ;  
 
 
         while(gi < nsequences){
@@ -217,23 +240,31 @@ kernel void quicksort_lmem(const int nsequences, global float* restrict in, glob
             barrier(CLK_LOCAL_MEM_FENCE) ; 
 
             if(li == 0){
-                sequences_to_process[0].sstart = sstart_arr[gi] ; 
-                sequences_to_process[0].send = send_arr[gi] ;
-                sequences_to_process[0].pivot_value = in[sequences_to_process[0].sstart] ;
-                next_sequence->sstart = 0 ;  
+                queue_sstart[0] = sstart_arr[gi] ; 
+                queue_send[0]  = send_arr[gi] ;
+                next_sstart = 0 ; 
             }
 
             barrier(CLK_LOCAL_MEM_FENCE) ; 
 
-            while(next_sequence->sstart != -1){
+            while(next_sstart != -1){
+
+                barrier(CLK_LOCAL_MEM_FENCE) ; 
 
                 if(li == 0){
-                    *next_sequence = sequences_to_process[curr_sequence] ;
+                   next_sstart = queue_sstart[curr_sequence] ; 
+                   next_send = queue_send[curr_sequence] ; 
+                   next_pivot = in[next_sstart] ; 
                 }
 
                 barrier(CLK_LOCAL_MEM_FENCE) ; 
 
-                sequence current_sequence = *next_sequence ; 
+                sequence current_sequence ;
+
+                current_sequence.sstart = next_sstart ; 
+                current_sequence.send = next_send ; 
+                current_sequence.pivot_value = next_pivot ; 
+
                 float v = 0; 
 
                 if(current_sequence.sstart + li <= current_sequence.send){
@@ -313,23 +344,21 @@ kernel void quicksort_lmem(const int nsequences, global float* restrict in, glob
                     }
 
                     if(sum_lt >= 2){ 
-                        sequences_to_process[last_sequence_to_process].sstart = current_sequence.sstart ; 
-                        sequences_to_process[last_sequence_to_process].send = current_sequence.sstart +  sum_lt - 1 ; 
-                        sequences_to_process[last_sequence_to_process].pivot_value = in[current_sequence.sstart] ;
+                        queue_sstart[last_sequence_to_process] = current_sequence.sstart ; 
+                        queue_send[last_sequence_to_process] = current_sequence.sstart +  sum_lt - 1 ; 
                         last_sequence_to_process = (last_sequence_to_process + 1)%QUEUE_SIZE ; 
                     }
 
                     if(sum_gt >= 2){ 
-                        sequences_to_process[last_sequence_to_process].sstart = current_sequence.send - sum_gt + 1 ; 
-                        sequences_to_process[last_sequence_to_process].send = current_sequence.send ; 
-                        sequences_to_process[last_sequence_to_process].pivot_value = in[current_sequence.send- sum_gt + 1] ;
+                        queue_sstart[last_sequence_to_process] = current_sequence.send - sum_gt + 1 ; 
+                        queue_send[last_sequence_to_process] = current_sequence.send ; 
                         last_sequence_to_process = (last_sequence_to_process + 1)%QUEUE_SIZE ;  
                     }
                      
                     curr_sequence = (curr_sequence + 1)%QUEUE_SIZE ; 
 
                     if(curr_sequence == last_sequence_to_process){
-                        next_sequence->sstart = -1 ; 
+                        next_sstart = -1 ; 
                     }
                 }
 
@@ -341,13 +370,26 @@ kernel void quicksort_lmem(const int nsequences, global float* restrict in, glob
 
 
 kernel void quicksort_lmem4(const int nsequences, global float* restrict in, global const int* restrict sstart_arr, global const int* restrict send_arr,
-    local int* bit_array_inf, local int* bit_array_sup, local sequence* next_sequence, local sequence_* sequences_to_process){
+    local int* bit_array_inf, local int* bit_array_sup){
 
-        int i = get_global_id(0) ; 
-        int li = get_local_id(0) ;
+        const int li = get_local_id(0) ;
         int gi = get_group_id(0) ; 
         const int ls = get_local_size(0) ; 
         const int num_work_groups = get_num_groups(0) ;
+
+
+        local int next_sstart ;
+        local int next_send ; 
+        local float next_pivot ; 
+
+        local int queue_sstart[QUEUE_SIZE] ; 
+        local int queue_send[QUEUE_SIZE] ;
+
+        private float v[4] = {0} ; 
+        private int acc4_sup[4] = {0};
+        private int acc4_inf[4] = {0};
+        private int exclusive_sup[4] = {0};
+        private int exclusive_inf[4] = {0};    
 
 
         while(gi < nsequences){
@@ -357,29 +399,30 @@ kernel void quicksort_lmem4(const int nsequences, global float* restrict in, glo
             barrier(CLK_LOCAL_MEM_FENCE) ; 
 
             if(li == 0){
-                sequences_to_process[0].sstart = sstart_arr[gi] ; 
-                sequences_to_process[0].send = send_arr[gi] ;
-                next_sequence->sstart = 0 ;  
+                queue_sstart[0] = sstart_arr[gi] ; 
+                queue_send[0] = send_arr[gi] ;
+                next_sstart = 0 ;  
             }
 
             barrier(CLK_LOCAL_MEM_FENCE) ; 
 
-            while(next_sequence->sstart != -1){
+            while(next_sstart != -1){
+
+                barrier(CLK_LOCAL_MEM_FENCE) ; 
 
                 if(li == 0){
-                    next_sequence->sstart = sequences_to_process[curr_sequence].sstart ;
-                    next_sequence->send =  sequences_to_process[curr_sequence].send ; 
-                    next_sequence->pivot_value = in[sequences_to_process[curr_sequence].sstart] ; 
+                    next_sstart = queue_sstart[curr_sequence] ;
+                    next_send = queue_send[curr_sequence] ; 
+                    next_pivot = in[next_sstart] ; 
                 }
 
                 barrier(CLK_LOCAL_MEM_FENCE) ; 
 
-                sequence current_sequence = *next_sequence ;
+                sequence current_sequence ;
 
-                private float v[4] ; 
-
-                private int acc4_sup[4] = {0};
-                private int acc4_inf[4] = {0}; 
+                current_sequence.sstart = next_sstart ; 
+                current_sequence.send = next_send ; 
+                current_sequence.pivot_value = next_pivot ;  
 
                 #pragma unroll 
                 for(int j = 0 ; j < 4 ; j++){
@@ -403,9 +446,6 @@ kernel void quicksort_lmem4(const int nsequences, global float* restrict in, glo
                         acc4_inf[j] = 0 ; 
                     } 
                 }
-
-                private int exclusive_sup[4] = {0};
-                private int exclusive_inf[4] = {0}; 
 
                 int acc_sup = 0 ; 
                 int acc_inf = 0 ; 
@@ -482,24 +522,23 @@ kernel void quicksort_lmem4(const int nsequences, global float* restrict in, glo
                     }
 
                     if(sum_lt >= 2){  
-                        sequences_to_process[last_sequence_to_process].sstart = current_sequence.sstart ; 
-                        sequences_to_process[last_sequence_to_process].send = current_sequence.sstart +  sum_lt - 1 ;
-                        last_sequence_to_process = (last_sequence_to_process + 1)%QUEUE_SIZE ; 
+                        queue_sstart[last_sequence_to_process] = current_sequence.sstart ; 
+                        queue_send[last_sequence_to_process] = current_sequence.sstart +  sum_lt - 1 ; 
+                        last_sequence_to_process = (last_sequence_to_process + 1)%QUEUE_SIZE ;
                     }
 
                     if(sum_gt >= 2){
-                        sequences_to_process[last_sequence_to_process].sstart = current_sequence.send - sum_gt + 1 ; 
-                        sequences_to_process[last_sequence_to_process].send = current_sequence.send ;
+                        queue_sstart[last_sequence_to_process] = current_sequence.send - sum_gt + 1 ; 
+                        queue_send[last_sequence_to_process] = current_sequence.send ; 
                         last_sequence_to_process = (last_sequence_to_process + 1)%QUEUE_SIZE ;   
                     }
                     curr_sequence = (curr_sequence + 1)%QUEUE_SIZE ; 
 
                     if(curr_sequence == last_sequence_to_process){
-                        next_sequence->sstart = -1 ; 
+                        next_sstart = -1 ; 
                     }
                 }
                
-
                 barrier(CLK_LOCAL_MEM_FENCE) ; 
             }
             gi+=num_work_groups ; 

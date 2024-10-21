@@ -52,7 +52,7 @@ int main(int argc, char* const* argv){
 			case 'd':
 				d = atoi(optarg) ;
 				if(d <1 || d > 3){
-					fprintf(stderr, "d must be  between 1 and 4\n") ; 
+					fprintf(stderr, "d must be  between 1 and 3\n") ; 
 					exit(EXIT_FAILURE) ; 
 				}
 				break ; 
@@ -97,18 +97,18 @@ int main(int argc, char* const* argv){
 
 	if(test_mode){ 
 
-		srand(seed) ; 
-		vec = calloc(nels, sizeof(float)) ; 
+		srand(seed) ;
+		float* vec = calloc(nels, sizeof(float)) ;  
 		
 		switch(d){
 			case 1:
 				printf("p1 : %f p2 : %f \n", p1, p2) ; 
-				normal_distr_arr(vec, nels, p1, p2) ;
+				distr_arr(&resource, vec, nels, p1, p2, lws, true) ;
 				break ; 
 
 			case 2:
 				printf("p1 : %f p2 : %f \n", p1, p2) ; 
-				unif_distr_arr(vec, nels, p1, p2) ;
+				distr_arr(&resource, vec, nels, p1, p2, lws, false) ;
 				break ;    
 		}
 

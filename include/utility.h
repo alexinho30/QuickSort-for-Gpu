@@ -9,12 +9,12 @@
 #include "../include/boiler.h"
 
 typedef struct{
-    unsigned long split_elements_time ;
-    unsigned long partial_scan_time ; 
-    unsigned long scan_tails_time ; 
-    unsigned long scan_update_time ;  
-    unsigned long partition_time ;
-    unsigned long partition_copy_time ;
+    double split_elements_time ;
+    double partial_scan_time ; 
+    double scan_tails_time ; 
+    double scan_update_time ;  
+    double partition_time ;
+    double partition_copy_time ;
 }times ; 
 
 typedef struct{
