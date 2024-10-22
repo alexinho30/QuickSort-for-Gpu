@@ -265,8 +265,8 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 	start_sequence.pivot_value = vec[random_uniform_value(0, nels - 1)] ; 
 	enqueue(&sequences_to_partion, &start_sequence) ;  
 
-	int* sstart_arr = calloc(nels/8, sizeof(int)) ;  
-	int* send_arr = calloc(nels/8, sizeof(int)) ; 
+	int* sstart_arr = calloc(nels, sizeof(int)) ;  
+	int* send_arr = calloc(nels, sizeof(int)) ; 
 	int seq_arr_dim = 0 ;
 
 	int iteration = 0; 
@@ -305,8 +305,8 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 
 		cl_event scan_evt[3] ; 
 
-		scan_evt[0] = scan_seq(resources->que, &k, &m,  m.bit_map_sup, m.bit_map_inf, round_mul_up(current_nels, 4), lws, current_nwg_scan) ;
-		scan_evt[1] = scan_seq(resources->que, &k, &m, m.tails_sup, m.tails_inf, round_mul_up(current_nwg_scan, 4), lws, 1) ;
+		scan_evt[0] = scan_seq(resources->que, &k, &m,  m.bit_map_sup, m.bit_map_inf, current_nels, lws, current_nwg_scan) ;
+		scan_evt[1] = scan_seq(resources->que, &k, &m, m.tails_sup, m.tails_inf, current_nwg_scan, lws, 1) ;
 		scan_evt[2] = scan_seq_update(resources->que, &k, &m, round_mul_up(current_nels, 4), lws, current_nwg_scan - 1) ;
 
 		clWaitForEvents(3, scan_evt) ; 

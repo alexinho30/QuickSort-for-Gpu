@@ -11,11 +11,12 @@ kernel void init_vec_norm(global float* restrict in, global const float* restric
 
     const int i = get_global_id(0) ; 
 
-    const float x1 = rand_values[i] ; 
-    const float x2 = (i == nels -1) ? rand_values[0] : rand_values[i] ; 
-
-    const float n1 = cos(2*3.14*x2)*sqrt(-2.*log(x1)) ;
-    in[i] = sigma*n1 + mu ;  
+    if(i < nels){
+        const float x1 = rand_values[i] ; 
+        const float x2 = (i == nels -1) ? rand_values[0] : rand_values[i] ;
+        const float n1 = cos(2*3.14*x2)*sqrt(-2.*log(x1)) ;
+        in[i] = sigma*n1 + mu ;  
+    }
 }
 
 kernel void init_vec_uniform(global float* restrict in, global const float* restrict rand_values, const int nels, 
@@ -23,11 +24,11 @@ kernel void init_vec_uniform(global float* restrict in, global const float* rest
 
     const int i = get_global_id(0) ; 
 
-    const float x1 = rand_values[i] ; 
-    in[i] = x1*(end - start) + start ; 
+    if(i < nels){
+        const float x1 = rand_values[i] ; 
+        in[i] = x1*(end - start) + start ; 
+    }
 } 
-
-
 
 kernel void split_elements(const int nels, const int sstart, global const float * restrict in,  
 const float pivot, global int* bit_array_sup, global int* bit_array_inf
@@ -104,7 +105,7 @@ const float pivot, global int* bit_array_sup, global int* bit_array_inf){
 kernel void scan(const int nels, global int4* restrict bit_map_sup, global int4* restrict bit_map_inf, 
 global int* restrict tails_inf, global int* restrict tails_sup, local int* restrict lmem_sup, local int* lmem_inf){
 
-    const int nquarts = nels/4 ; 
+    const int nquarts = (nels+3)/4 ; 
     const int gi = get_group_id(0) ; 
     const int nquarts_nwg = (nquarts + get_num_groups(0) - 1)/get_num_groups(0) ;
     const int li = get_local_id(0) ; 
@@ -112,6 +113,27 @@ global int* restrict tails_inf, global int* restrict tails_sup, local int* restr
     int start = gi*nquarts_nwg ;
     int tail_inf = 0, tail_sup = 0 ;  
     const int end = min(start + nquarts_nwg, nquarts) ; 
+
+    if(!(nels & 3) && end == nquarts && li == 0){
+        const int offset = 4 - (nels%4) ; 
+        int4 v = bit_map_inf[nquarts - 1] ; 
+        int4 v1 = bit_map_sup[nquarts - 1] ; 
+
+        switch(offset){
+            case 1 :
+                bit_map_inf[nquarts - 1] = (int4)(v.s0, 0, 0, 0) ; 
+                bit_map_sup[nquarts - 1] = (int4)(v1.s0, 0, 0, 0) ;
+                break ; 
+            case 2 :
+                bit_map_inf[nquarts - 1] = (int4)(v.s0, v.s1, 0, 0) ; 
+                bit_map_sup[nquarts - 1] = (int4)(v1.s0, v1.s1, 0, 0) ;
+                break ; 
+            case 3 :
+                bit_map_inf[nquarts - 1] = (int4)(v.s0, v.s1, v.s2, 0) ; 
+                bit_map_sup[nquarts - 1] = (int4)(v1.s0, v1.s1, v1.s2, 0) ;
+                break ; 
+        } 
+    }
 
     while(start < end){
         barrier(CLK_LOCAL_MEM_FENCE) ; 
