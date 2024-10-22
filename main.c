@@ -98,7 +98,7 @@ int main(int argc, char* const* argv){
 	if(test_mode){ 
 
 		srand(seed) ;
-		float* vec = calloc(nels, sizeof(float)) ;  
+		vec = calloc(nels, sizeof(float)) ;  
 		
 		switch(d){
 			case 1:
