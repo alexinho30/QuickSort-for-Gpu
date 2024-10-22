@@ -93,12 +93,14 @@ int main(int argc, char* const* argv){
 		
 		switch(d){
 			case 1:
-				normal_distr_arr(vec, nels, p1, p2) ;
-				break ;  
+				printf("p1 : %f p2 : %f \n", p1, p2) ; 
+				distr_arr(&resource, vec, nels, p1, p2, lws, true) ;
+				break ;   
 
 			case 2:
-				unif_distr_arr(vec, nels, p1, p2) ;
-				break ;    
+				printf("p1 : %f p2 : %f \n", p1, p2) ; 
+				distr_arr(&resource, vec, nels, p1, p2, lws, false) ;
+				break ;     
 		}
 
 		quickSortGpu(vec, nels, lws, nwg, &resource, test_mode, vect_4) ; 
