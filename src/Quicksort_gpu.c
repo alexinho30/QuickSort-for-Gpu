@@ -495,12 +495,12 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		}
 
 		if(test_correctness){
-			t[iteration].split_elements_time = runtime_ms(evt_split_elements) ;
-			t[iteration].partial_scan_time = runtime_ms(scan_evt[0]) ; 
-			t[iteration].scan_tails_time = runtime_ms(scan_evt[1]) ; 
-			t[iteration].scan_update_time = runtime_ms(scan_evt[2]) ; 
-			t[iteration].partition_time = runtime_ms(partition_evt) ; 
-			t[iteration].partition_copy_time = runtime_ms(partition_copy_evt) ; 
+			t[iteration].split_elements_time = runtime_ns(evt_split_elements) ;
+			t[iteration].partial_scan_time = runtime_ns(scan_evt[0]) ; 
+			t[iteration].scan_tails_time = runtime_ns(scan_evt[1]) ; 
+			t[iteration].scan_update_time = runtime_ns(scan_evt[2]) ; 
+			t[iteration].partition_time = runtime_ns(partition_evt) ; 
+			t[iteration].partition_copy_time = runtime_ns(partition_copy_evt) ; 
 			s[iteration].current_nels = current_nels ; 
 			s[iteration].current_nwg = current_nwg ; 
 			iteration++; 
