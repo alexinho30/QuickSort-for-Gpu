@@ -7,7 +7,6 @@
 #include "../include/random_numbers.h"
 #define MAX_NUM_SEQ 30000000
 #define TEST 1
-#define QUEUE_SIZE 2048
 
 #include<stdio.h>
 #include<unistd.h>

@@ -221,12 +221,6 @@ cl_event final_partition_lmem4(cl_command_queue que, kernels* k, device_memeory*
 
 	err = clSetKernelArg(k->quicksort_lmem4, 5, sizeof(cl_int)*lws[0], NULL) ;
 	ocl_check(err, "set kernel local mem sup") ;
-
-	err = clSetKernelArg(k->quicksort_lmem4, 6, sizeof(sequence), NULL) ;
-	ocl_check(err, "set kernel local mem sup") ;
-
-	err = clSetKernelArg(k->quicksort_lmem4, 7, sizeof(sequence_)*QUEUE_SIZE, NULL) ;
-	ocl_check(err, "set kernel local mem sup") ;
  
 	err = clEnqueueNDRangeKernel(que,  k->quicksort_lmem4, 1, NULL, gws, lws, 0, NULL, &final_partition_lmem_evt) ;
     ocl_check(err, "enqueue partition copy kernel") ; 
