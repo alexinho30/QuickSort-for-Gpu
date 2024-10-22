@@ -1,8 +1,24 @@
-typedef struct{
-    int sstart ; 
-    int send ; 
-    float pivot_value; 
-}sequence ; 
+kernel void init_vec_norm(global float* restrict in, global const float* restrict rand_values, const int nels, 
+    const float mu, const float sigma){
+
+    const int i = get_global_id(0) ; 
+
+    const float x1 = rand_values[i] ; 
+    const float x2 = (i == nels -1) ? rand_values[0] : rand_values[i] ; 
+
+    const float n1 = cos(2*3.14*x2)*sqrt(-2.*log(x1)) ;
+    in[i] = sigma*n1 + mu ;  
+}
+
+kernel void init_vec_uniform(global float* restrict in, global const float* restrict rand_values, const int nels, 
+    const float start, const float end){
+
+    const int i = get_global_id(0) ; 
+
+    const float x1 = rand_values[i] ; 
+    in[i] = x1*(end - start) + start ; 
+}
+
 
 kernel void split_elements(const int nels, const int sstart, global const float * restrict in,  
 const float pivot, global int* bit_array_sup, global int* bit_array_inf
