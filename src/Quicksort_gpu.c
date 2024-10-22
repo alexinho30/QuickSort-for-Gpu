@@ -323,8 +323,8 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 	enqueue(&sequences_to_partion, &start_sequence) ;
 
 
-	int* sstart_arr = calloc(nels/8, sizeof(int)) ;  
-	int* send_arr = calloc(nels/8, sizeof(int)) ; 
+	int* sstart_arr = calloc(nels, sizeof(int)) ;  
+	int* send_arr = calloc(nels, sizeof(int)) ; 
 	int seq_arr_dim = 0 ;    
 
 	int iteration = 0; 

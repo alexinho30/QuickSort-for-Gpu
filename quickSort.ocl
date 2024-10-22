@@ -12,11 +12,13 @@ kernel void init_vec_norm(global float* restrict in, global const float* restric
 
     const int i = get_global_id(0) ; 
 
-    const float x1 = rand_values[i] ; 
-    const float x2 = (i == nels -1) ? rand_values[0] : rand_values[i] ; 
+    if(i < nels){
+        const float x1 = rand_values[i] ; 
+        const float x2 = (i == nels -1) ? rand_values[0] : rand_values[i] ; 
 
-    const float n1 = cos(2*3.14*x2)*sqrt(-2.*log(x1)) ;
-    in[i] = sigma*n1 + mu ;  
+        const float n1 = cos(2*3.14*x2)*sqrt(-2.*log(x1)) ;
+        in[i] = sigma*n1 + mu ;
+    }  
 }
 
 kernel void init_vec_uniform(global float* restrict in, global const float* restrict rand_values, const int nels, 
@@ -24,8 +26,10 @@ kernel void init_vec_uniform(global float* restrict in, global const float* rest
 
     const int i = get_global_id(0) ; 
 
-    const float x1 = rand_values[i] ; 
-    in[i] = x1*(end - start) + start ; 
+    if(i < nels){
+        const float x1 = rand_values[i] ; 
+        in[i] = x1*(end - start) + start ; 
+    }
 }
 
 
