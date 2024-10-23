@@ -35,7 +35,7 @@ cl_event split_elements(cl_command_queue q, kernels* k, device_memeory* m , cl_i
     return evt_split_elements;
 }
 
-cl_event scan_seq(cl_command_queue q, kernels* k, device_memeory* m, cl_mem in_1, cl_mem in_2, cl_int nels, cl_int lws_, const int nwg){
+cl_event scan_seq(cl_command_queue q, kernels* k, device_memeory* m, cl_mem in_1, cl_mem in_2, cl_int nels, cl_int lws_, const int nwg, bool vect4){
 
 	cl_int err ; 
 	cl_event scan_evt ; 
@@ -43,35 +43,37 @@ cl_event scan_seq(cl_command_queue q, kernels* k, device_memeory* m, cl_mem in_1
 	size_t lws[] = {lws_} ; 
 	size_t gws[] = {nwg*lws[0]} ; 
 
-	err = clSetKernelArg(k->scan_gpu, 0, sizeof(cl_int), &nels) ;
+	cl_kernel scan = (vect4) ? k->scan_gpu4 : k->scan_gpu ;  
+
+	err = clSetKernelArg(scan, 0, sizeof(cl_int), &nels) ;
 	ocl_check(err, "set kernel nels ") ;
 
-	err = clSetKernelArg(k->scan_gpu, 1, sizeof(in_1), &in_1) ;
+	err = clSetKernelArg(scan, 1, sizeof(in_1), &in_1) ;
 	ocl_check(err, "set kernel d_buf") ;
 
-	err = clSetKernelArg(k->scan_gpu, 2, sizeof(in_2), &in_2) ;
+	err = clSetKernelArg(scan, 2, sizeof(in_2), &in_2) ;
 	ocl_check(err, "set kernel d_buf") ;
 
-	err = clSetKernelArg(k->scan_gpu, 3, sizeof(m->tails_inf), &m->tails_inf) ;
+	err = clSetKernelArg(scan, 3, sizeof(m->tails_inf), &m->tails_inf) ;
 	ocl_check(err, "set kernel lt") ;
 
-	err = clSetKernelArg(k->scan_gpu, 4, sizeof(m->tails_sup), &m->tails_sup) ;
+	err = clSetKernelArg(scan, 4, sizeof(m->tails_sup), &m->tails_sup) ;
 	ocl_check(err, "set kernel gt") ;
 
-	err = clSetKernelArg(k->scan_gpu, 5, sizeof(cl_int)*lws[0], NULL) ;
+	err = clSetKernelArg(scan, 5, sizeof(cl_int)*lws[0], NULL) ;
 	ocl_check(err, "set kernel local mem inf") ;
 
-	err = clSetKernelArg(k->scan_gpu, 6, sizeof(cl_int)*lws[0], NULL) ;
+	err = clSetKernelArg(scan, 6, sizeof(cl_int)*lws[0], NULL) ;
 	ocl_check(err, "set kernel local mem sup") ;
 
-	err = clEnqueueNDRangeKernel(q, k->scan_gpu, 1, NULL, gws, lws, 0, NULL, &scan_evt) ;
+	err = clEnqueueNDRangeKernel(q, scan, 1, NULL, gws, lws, 0, NULL, &scan_evt) ;
     ocl_check(err, "enqueue scan seq kernel") ; 
 
     return scan_evt; 
 
 }
 
-cl_event scan_seq_update(cl_command_queue q, kernels* k, device_memeory* m, cl_int nels, cl_int lws_, const int nwg){
+cl_event scan_seq_update(cl_command_queue q, kernels* k, device_memeory* m, cl_int nels, cl_int lws_, const int nwg, bool vect4){
 
 	cl_int err ; 
 	cl_event scan_evt ; 
@@ -79,24 +81,24 @@ cl_event scan_seq_update(cl_command_queue q, kernels* k, device_memeory* m, cl_i
 	size_t lws[] = {lws_} ; 
 	size_t gws[] = {nwg*lws[0]} ; 
 
-	err = clSetKernelArg(k->scan_update, 0, sizeof(cl_int), &nels) ;
+	cl_kernel update = (vect4) ? k->scan_update4 : k->scan_update ;  
 
+	err = clSetKernelArg(update, 0, sizeof(cl_int), &nels) ;
 	ocl_check(err, "set kernel nels ") ;
-
 	
-	err = clSetKernelArg(k->scan_update, 1, sizeof(m->bit_map_sup), &m->bit_map_sup) ;
+	err = clSetKernelArg(update, 1, sizeof(m->bit_map_sup), &m->bit_map_sup) ;
 	ocl_check(err, "set kernel d_buf") ;
 
-	err = clSetKernelArg(k->scan_update, 2, sizeof(m->bit_map_inf), &m->bit_map_inf) ;
+	err = clSetKernelArg(update, 2, sizeof(m->bit_map_inf), &m->bit_map_inf) ;
 	ocl_check(err, "set kernel d_buf") ;
 
-	err = clSetKernelArg(k->scan_update, 3, sizeof(m->tails_sup), &m->tails_sup) ;
+	err = clSetKernelArg(update, 3, sizeof(m->tails_sup), &m->tails_sup) ;
 	ocl_check(err, "set kernel gt") ;
 
-	err = clSetKernelArg(k->scan_update, 4, sizeof(m->tails_inf), &m->tails_inf) ;
+	err = clSetKernelArg(update, 4, sizeof(m->tails_inf), &m->tails_inf) ;
 	ocl_check(err, "set kernel lt") ;
 
-	err = clEnqueueNDRangeKernel(q, k->scan_update, 1, NULL, gws, lws, 0, NULL, &scan_evt) ;
+	err = clEnqueueNDRangeKernel(q, update, 1, NULL, gws, lws, 0, NULL, &scan_evt) ;
     ocl_check(err, "enqueue scan seq update kernel") ; 
 
     return scan_evt; 
@@ -206,7 +208,7 @@ cl_event final_partition_lmem4(cl_command_queue que, kernels* k, device_memeory*
     return final_partition_lmem_evt; 
 }
 
-float* quickSortGpu(const float* vec,  const int nels, const int lws, const int nwg, cl_resources* resources, const bool test_correctness, const bool vect_4){
+float* quickSortGpu(const float* vec,  const int nels, const int lws, const int nwg, cl_resources* resources, const bool test_correctness, const bool vect_4, const bool vect4_scan){
 
 	if(resources == NULL){
 		handle_error("resources set to null\n") ; 
@@ -228,10 +230,14 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 	ocl_check(err, "create kernel split_elements");
 	k.splitting_elements_vect_4 = clCreateKernel(resources->prog, "split_elements_vect_4", &err);	
 	ocl_check(err, "create kernel split_elements_vect4");
-	k.scan_gpu = clCreateKernel(resources->prog, "scan", &err);	
-	ocl_check(err, "create kernel scan");
+	k.scan_gpu = clCreateKernel(resources->prog, "scan_lmem", &err);	
+	ocl_check(err, "create kernel scan_lmem");
 	k.scan_update = clCreateKernel(resources->prog, "scan_update", &err);	
 	ocl_check(err, "create kernel scan_update");
+	k.scan_gpu4 = clCreateKernel(resources->prog, "scan_lmem4", &err);	
+	ocl_check(err, "create kernel scan_lmem4");
+	k.scan_update4 = clCreateKernel(resources->prog, "scan_update4", &err);	
+	ocl_check(err, "create kernel scan_update4");
 	k.partitioning = clCreateKernel(resources->prog, "partition", &err);	
 	ocl_check(err, "create kernel partitioning");
 	k.partitioning_copy = clCreateKernel(resources->prog, "partition_copy", &err);	
@@ -303,11 +309,18 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 
 		clWaitForEvents(1, &evt_split_elements) ;
 
-		cl_event scan_evt[3] ; 
+		cl_event scan_evt[3] ;
+  
 
-		scan_evt[0] = scan_seq(resources->que, &k, &m,  m.bit_map_sup, m.bit_map_inf, current_nels, lws, current_nwg_scan) ;
-		scan_evt[1] = scan_seq(resources->que, &k, &m, m.tails_sup, m.tails_inf, current_nwg_scan, lws, 1) ;
-		scan_evt[2] = scan_seq_update(resources->que, &k, &m, round_mul_up(current_nels, 4), lws, current_nwg_scan - 1) ;
+		scan_evt[0] = scan_seq(resources->que, &k, &m,  m.bit_map_sup, m.bit_map_inf, current_nels, lws, current_nwg_scan, vect4_scan) ;
+		scan_evt[1] = scan_seq(resources->que, &k, &m, m.tails_sup, m.tails_inf, current_nwg_scan, lws, 1, vect4_scan) ;
+		
+		if(vect4_scan){
+			scan_evt[2] = scan_seq_update(resources->que, &k, &m, round_mul_up(current_nels, 4), lws, current_nwg_scan - 1,vect4_scan) ;
+		}
+		else{
+			scan_evt[2] = scan_seq_update(resources->que, &k, &m, current_nels, lws, current_nwg_scan - 1, false) ;
+		}
 
 		clWaitForEvents(3, scan_evt) ; 
 

@@ -102,7 +102,7 @@ const float pivot, global int* bit_array_sup, global int* bit_array_inf){
     }
 }
 
-kernel void scan(const int nels, global int4* restrict bit_map_sup, global int4* restrict bit_map_inf, 
+kernel void scan_lmem4(const int nels, global int4* restrict bit_map_sup, global int4* restrict bit_map_inf, 
 global int* restrict tails_inf, global int* restrict tails_sup, local int* restrict lmem_sup, local int* lmem_inf){
 
     const int nquarts = (nels+3)/4 ; 
@@ -112,28 +112,7 @@ global int* restrict tails_inf, global int* restrict tails_sup, local int* restr
 
     int start = gi*nquarts_nwg ;
     int tail_inf = 0, tail_sup = 0 ;  
-    const int end = min(start + nquarts_nwg, nquarts) ; 
-
-    if(!(nels & 3) && end == nquarts && li == 0){
-        const int offset = 4 - (nels%4) ; 
-        int4 v = bit_map_inf[nquarts - 1] ; 
-        int4 v1 = bit_map_sup[nquarts - 1] ; 
-
-        switch(offset){
-            case 1 :
-                bit_map_inf[nquarts - 1] = (int4)(v.s0, 0, 0, 0) ; 
-                bit_map_sup[nquarts - 1] = (int4)(v1.s0, 0, 0, 0) ;
-                break ; 
-            case 2 :
-                bit_map_inf[nquarts - 1] = (int4)(v.s0, v.s1, 0, 0) ; 
-                bit_map_sup[nquarts - 1] = (int4)(v1.s0, v1.s1, 0, 0) ;
-                break ; 
-            case 3 :
-                bit_map_inf[nquarts - 1] = (int4)(v.s0, v.s1, v.s2, 0) ; 
-                bit_map_sup[nquarts - 1] = (int4)(v1.s0, v1.s1, v1.s2, 0) ;
-                break ; 
-        } 
-    }
+    const int end = min(start + nquarts_nwg, nquarts) ;  
 
     while(start < end){
         barrier(CLK_LOCAL_MEM_FENCE) ; 
@@ -141,7 +120,7 @@ global int* restrict tails_inf, global int* restrict tails_sup, local int* restr
         int4 acc4_sup = (int4)0 ;
         int4 acc4_inf = (int4)0 ;  
 
-        int i = start + li ; 
+        int i = start + li ;
 
         int4 exclusive_sup = (int4)0; 
         int4 exclusive_inf = (int4)0; 
@@ -161,10 +140,83 @@ global int* restrict tails_inf, global int* restrict tails_sup, local int* restr
         }
 
         int acc_inf = acc4_inf.s3 ; 
-        int acc_sup = acc4_sup.s3 ; 
+        int acc_sup = acc4_sup.s3 ;
 
         lmem_inf[li] = acc_inf ;
         lmem_sup[li] = acc_sup ; 
+
+        int div = 1 ; 
+        int curr_idx = li ; 
+
+        while(div < get_local_size(0)){
+            int offset = div - 1 ; 
+            int next_idx = curr_idx/2 ;
+            barrier(CLK_LOCAL_MEM_FENCE) ; 
+            if(curr_idx & 1){
+                acc_sup += lmem_sup[next_idx*2*div + offset] ; 
+                acc_inf += lmem_inf[next_idx*2*div + offset] ; 
+                lmem_inf[li] = acc_inf ; 
+                lmem_sup[li] = acc_sup ; 
+            } 
+            curr_idx = next_idx ;
+            div*=2 ;  
+        }         
+        barrier(CLK_LOCAL_MEM_FENCE) ; 
+
+        if(i < end){
+            const int local_tail_inf = (li == 0)? 0 : lmem_inf[li - 1] ; 
+            const int local_tail_sup = (li == 0)? 0 : lmem_sup[li - 1] ;
+
+            if(tails_inf != bit_map_inf){
+                bit_map_inf[i] = acc4_inf + tail_inf + local_tail_inf - exclusive_inf; 
+                bit_map_sup[i] = acc4_sup + tail_sup + local_tail_sup - exclusive_sup;
+            }
+            else{ 
+                bit_map_inf[i] = acc4_inf + tail_inf + local_tail_inf ; 
+                bit_map_sup[i] =  acc4_sup + tail_sup + local_tail_sup ;
+            }
+        }
+
+        start+=get_local_size(0) ; 
+
+        tail_inf += lmem_inf[get_local_size(0) - 1] ; 
+        tail_sup += lmem_sup[get_local_size(0) - 1] ; 
+    }
+
+    if(li == 0 && tails_inf != bit_map_inf){
+        tails_inf[gi] = tail_inf ; 
+        tails_sup[gi] = tail_sup ;   
+    }
+
+}
+
+kernel void scan_lmem(const int nels, global int* restrict bit_map_sup, global int* restrict bit_map_inf, 
+global int* restrict tails_inf, global int* restrict tails_sup, local int* restrict lmem_sup, local int* lmem_inf){
+
+    const int gi = get_group_id(0) ; 
+    const int nels_nwg = (nels + get_num_groups(0) - 1)/get_num_groups(0) ;
+    const int li = get_local_id(0) ; 
+
+    int start = gi*nels_nwg ;
+    int tail_inf = 0, tail_sup = 0 ;  
+    const int end = min(start + nels_nwg, nels) ; 
+
+    while(start < end){
+        barrier(CLK_LOCAL_MEM_FENCE) ; 
+        int acc_sup = 0 ;
+        int acc_inf = 0 ;  
+        int i = start + li ; 
+
+        if(i < end){
+            acc_sup = bit_map_sup[i] ;
+            acc_inf = bit_map_inf[i] ; 
+        }
+
+        lmem_inf[li] = acc_inf ;
+        lmem_sup[li] = acc_sup ;  
+
+        const int exclusive_sup = acc_sup ; 
+        const int exclusive_inf = acc_inf ; 
 
         int div = 1 ; 
         int curr_idx = li ; 
@@ -183,20 +235,16 @@ global int* restrict tails_inf, global int* restrict tails_sup, local int* restr
             div*=2 ;  
         }        
 
-        barrier(CLK_LOCAL_MEM_FENCE) ; 
-
         if(i < end){
-            const int local_tail_inf = (li == 0)? 0 : lmem_inf[li - 1] ; 
-            const int local_tail_sup = (li == 0)? 0 : lmem_sup[li - 1] ;
-
             if(tails_inf != bit_map_inf){
-                bit_map_inf[i] = acc4_inf + tail_inf + local_tail_inf - exclusive_inf; 
-                bit_map_sup[i] = acc4_sup + tail_sup + local_tail_sup - exclusive_sup;
+                bit_map_inf[start + li] =  acc_inf + tail_inf - exclusive_inf ; 
+                bit_map_sup[start + li] =  acc_sup + tail_sup - exclusive_sup ;
             }
             else{
-                bit_map_inf[i] = acc4_inf + tail_inf + local_tail_inf ; 
-                bit_map_sup[i] =  acc4_sup + tail_sup + local_tail_sup ;
+                bit_map_inf[start + li] =  acc_inf + tail_inf ; 
+                bit_map_sup[start + li] =  acc_sup + tail_sup ;
             }
+
         }
 
         start+=get_local_size(0) ; 
@@ -208,13 +256,11 @@ global int* restrict tails_inf, global int* restrict tails_sup, local int* restr
 
     if(li == 0 && tails_inf != bit_map_inf){
         tails_inf[gi] = tail_inf ; 
-        tails_sup[gi] = tail_sup ;   
+        tails_sup[gi] = tail_sup ;  
     }
 }
 
-
-
-kernel void scan_update(const int nels, global int4* restrict bit_map_sup, global int4* restrict bit_map_inf, 
+kernel void scan_update4(const int nels, global int4* restrict bit_map_sup, global int4* restrict bit_map_inf, 
 global int* restrict tails_sup, global int* restrict tails_inf){
 
     const int nquarts = nels/4 ; 
@@ -231,6 +277,25 @@ global int* restrict tails_sup, global int* restrict tails_inf){
     const int li = get_local_id(0) ; 
 
     #pragma unroll
+    for(int j=start + li; j < end ; j+=get_local_size(0)){
+        bit_map_sup[j] += corr_sup ; 
+        bit_map_inf[j] += corr_inf ; 
+    } 
+}
+
+kernel void scan_update(const int nels, global int* restrict bit_map_sup, global int* restrict bit_map_inf, 
+global int* restrict tails_sup, global int* restrict tails_inf){
+
+    const int nwg = get_num_groups(0) + 1 ; 
+    const int nels_nwg = (nels + nwg - 1)/nwg ; 
+    const int li = get_local_id(0) ; 
+    const int start = (get_group_id(0) + 1)*nels_nwg ; 
+    const int end = min(start  + nels_nwg, nels) ; 
+    const int gi = get_group_id(0) ; 
+
+    const int corr_sup = tails_sup[gi] ; 
+    const int corr_inf = tails_inf[gi] ; 
+
     for(int j=start + li; j < end ; j+=get_local_size(0)){
         bit_map_sup[j] += corr_sup ; 
         bit_map_inf[j] += corr_inf ; 
