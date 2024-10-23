@@ -472,8 +472,8 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 	start_sequence.pivot_value = median_computation(resources, &k, &m, start_sequence.sstart, start_sequence.send, lws, nwg) ; 
 	enqueue(&sequences_to_partion, &start_sequence) ;
 
-	int* sstart_arr = calloc(nels/8, sizeof(int)) ;  
-	int* send_arr = calloc(nels/8, sizeof(int)) ; 
+	int* sstart_arr = calloc(nels, sizeof(int)) ;  
+	int* send_arr = calloc(nels, sizeof(int)) ; 
 	int seq_arr_dim = 0 ;       
 
 	int iteration = 0; 
