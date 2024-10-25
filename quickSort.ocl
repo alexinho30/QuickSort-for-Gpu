@@ -114,6 +114,28 @@ global int* restrict tails_inf, global int* restrict tails_sup, local int* restr
     int tail_inf = 0, tail_sup = 0 ;  
     const int end = min(start + nquarts_nwg, nquarts) ;  
 
+   if((nels & 3) && end == nquarts && li == 0){
+        int4 v = bit_map_inf[nquarts - 1] ; 
+        int4 v1= bit_map_sup[nquarts - 1] ; 
+
+        int x = 4 - nels%4 ; 
+
+        switch(x){
+            case 1 :
+                bit_map_inf[nquarts - 1] = (int4)(v.s0, v.s1, v.s2, 0)  ; 
+                bit_map_sup[nquarts - 1] = (int4)(v1.s0, v1.s1, v1.s2, 0)  ; 
+                break ; 
+            case 2 :
+                bit_map_inf[nquarts - 1] = (int4)(v.s0, v.s1, 0, 0)  ; 
+                bit_map_sup[nquarts - 1] = (int4)(v1.s0, v1.s1, 0, 0)  ; 
+                break ; 
+            case 3 :
+                bit_map_inf[nquarts - 1] = (int4)(v.s0, 0, 0, 0)  ; 
+                bit_map_sup[nquarts - 1] = (int4)(v1.s0, 0, 0, 0)  ; 
+                break ;  
+        } 
+    }
+
     while(start < end){
         barrier(CLK_LOCAL_MEM_FENCE) ; 
 
@@ -146,18 +168,23 @@ global int* restrict tails_inf, global int* restrict tails_sup, local int* restr
         lmem_sup[li] = acc_sup ; 
 
         int div = 1 ; 
-        int curr_idx = li ; 
+        int curr_idx = li ;
 
         while(div < get_local_size(0)){
             int offset = div - 1 ; 
             int next_idx = curr_idx/2 ;
-            barrier(CLK_LOCAL_MEM_FENCE) ; 
+            barrier(CLK_LOCAL_MEM_FENCE) ;
             if(curr_idx & 1){
-                acc_sup += lmem_sup[next_idx*2*div + offset] ; 
-                acc_inf += lmem_inf[next_idx*2*div + offset] ; 
+                acc_sup += lmem_sup[next_idx*div*2 + offset] ; 
+                acc_inf += lmem_inf[next_idx*div*2 + offset] ; 
                 lmem_inf[li] = acc_inf ; 
                 lmem_sup[li] = acc_sup ; 
-            } 
+            }
+
+            #if 0 //without these instruction vectorized scan doesn't work on pocl
+                if(acc_sup < 0) printf("acc_sup :  %d\n", acc_sup) ;
+            #endif
+              
             curr_idx = next_idx ;
             div*=2 ;  
         }         
