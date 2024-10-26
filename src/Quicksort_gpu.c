@@ -35,7 +35,7 @@ cl_event split_elements(cl_command_queue q, kernels* k, device_memeory* m , cl_i
     return evt_split_elements;
 }
 
-cl_event scan_seq(cl_command_queue q, kernels* k, device_memeory* m, cl_mem in_1, cl_mem in_2, cl_int nels, cl_int lws_, const int nwg, bool vect4){
+cl_event scan_seq(cl_command_queue q, kernels* k, device_memeory* m, cl_mem in_1, cl_mem in_2, cl_int nels, cl_int nels_tot, cl_int lws_, const int nwg, bool vect4, bool ibrid_version){
 
 	cl_int err ; 
 	cl_event scan_evt ; 
@@ -43,7 +43,7 @@ cl_event scan_seq(cl_command_queue q, kernels* k, device_memeory* m, cl_mem in_1
 	size_t lws[] = {lws_} ; 
 	size_t gws[] = {nwg*lws[0]} ; 
 
-	cl_kernel scan = (vect4) ? k->scan_gpu4 : k->scan_gpu ;  
+	cl_kernel scan = (vect4 || (ibrid_version && nels > nels_tot/6)) ? k->scan_gpu4 : k->scan_gpu ;  
 
 	err = clSetKernelArg(scan, 0, sizeof(cl_int), &nels) ;
 	ocl_check(err, "set kernel nels ") ;
@@ -73,7 +73,7 @@ cl_event scan_seq(cl_command_queue q, kernels* k, device_memeory* m, cl_mem in_1
 
 }
 
-cl_event scan_seq_update(cl_command_queue q, kernels* k, device_memeory* m, cl_int nels, cl_int lws_, const int nwg, bool vect4){
+cl_event scan_seq_update(cl_command_queue q, kernels* k, device_memeory* m, cl_int nels, cl_int nels_tot, cl_int lws_, const int nwg, const bool vect4, const bool ibrid_version){
 
 	cl_int err ; 
 	cl_event scan_evt ; 
@@ -81,7 +81,7 @@ cl_event scan_seq_update(cl_command_queue q, kernels* k, device_memeory* m, cl_i
 	size_t lws[] = {lws_} ; 
 	size_t gws[] = {nwg*lws[0]} ; 
 
-	cl_kernel update = (vect4) ? k->scan_update4 : k->scan_update ;  
+	cl_kernel update = (vect4 || (ibrid_version && nels > nels_tot/6)) ? k->scan_update4 : k->scan_update ;  
 
 	err = clSetKernelArg(update, 0, sizeof(cl_int), &nels) ;
 	ocl_check(err, "set kernel nels ") ;
@@ -208,7 +208,7 @@ cl_event final_partition_lmem4(cl_command_queue que, kernels* k, device_memeory*
     return final_partition_lmem_evt; 
 }
 
-float* quickSortGpu(const float* vec,  const int nels, const int lws, const int nwg, cl_resources* resources, const bool test_correctness, const bool vect_4, const bool vect4_scan){
+float* quickSortGpu(const float* vec,  const int nels, const int lws, const int nwg, cl_resources* resources, const bool test_correctness, const bool vect_4, const bool vect4_scan, const bool ibrid_version){
 
 	if(resources == NULL){
 		handle_error("resources set to null\n") ; 
@@ -282,28 +282,22 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		sequence curr_seq = dequeue(&sequences_to_partion) ; 
 		const int current_nels = curr_seq.send - curr_seq.sstart + 1 ;
 
-		int current_nwg_scan = nwg ;
-		int current_nwg_split_partion = nwg ; 
+		int current_nwg = nwg ;
 
-		if(current_nwg_split_partion*lws > current_nels){
-			current_nwg_split_partion = current_nels/lws ;  
-		}
-
-		if(current_nwg_scan*lws*4 > current_nels){
-			current_nwg_scan = current_nels /(4*lws);  
+		if(current_nwg*lws > current_nels){
+			current_nwg = current_nels /lws;  
 			
 		}
 		
-		if(current_nwg_scan <= 1) current_nwg_scan=2 ; 
-		if(!current_nwg_split_partion) current_nwg_split_partion++ ;
+		if(current_nwg <= 1) current_nwg=2 ; 
 
 		cl_event evt_split_elements ; 
 
-		if(vect_4){
-			evt_split_elements = split_elements(resources->que, &k, &m, current_nels, curr_seq.sstart, lws, curr_seq.pivot_value, current_nwg_split_partion, true) ; 
+		if(vect_4 || (ibrid_version && current_nels >= nels/6)){
+			evt_split_elements = split_elements(resources->que, &k, &m, current_nels, curr_seq.sstart, lws, curr_seq.pivot_value, current_nwg, true) ; 
 		}
 		else{
-			evt_split_elements = split_elements(resources->que, &k, &m, current_nels, curr_seq.sstart, lws, curr_seq.pivot_value, current_nwg_split_partion, false) ; 
+			evt_split_elements = split_elements(resources->que, &k, &m, current_nels, curr_seq.sstart, lws, curr_seq.pivot_value, current_nwg, false) ; 
 		} 
 
 
@@ -312,14 +306,14 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 		cl_event scan_evt[3] ;
   
 
-		scan_evt[0] = scan_seq(resources->que, &k, &m,  m.bit_map_sup, m.bit_map_inf, current_nels, lws, current_nwg_scan, vect4_scan) ;
-		scan_evt[1] = scan_seq(resources->que, &k, &m, m.tails_sup, m.tails_inf, current_nwg_scan, lws, 1, vect4_scan) ;
+		scan_evt[0] = scan_seq(resources->que, &k, &m,  m.bit_map_sup, m.bit_map_inf, current_nels, nels, lws, current_nwg, vect4_scan, ibrid_version) ;
+		scan_evt[1] = scan_seq(resources->que, &k, &m, m.tails_sup, m.tails_inf, current_nwg, nels, lws, 1, vect4_scan, ibrid_version) ;
 		
-		if(vect4_scan){
-			scan_evt[2] = scan_seq_update(resources->que, &k, &m, round_mul_up(current_nels, 4), lws, current_nwg_scan - 1,vect4_scan) ;
+		if(vect4_scan || (ibrid_version && current_nels >= nels/6)){
+			scan_evt[2] = scan_seq_update(resources->que, &k, &m, round_mul_up(current_nels, 4), nels, lws, current_nwg - 1,vect4_scan, ibrid_version) ;
 		}
 		else{
-			scan_evt[2] = scan_seq_update(resources->que, &k, &m, current_nels, lws, current_nwg_scan - 1, false) ;
+			scan_evt[2] = scan_seq_update(resources->que, &k, &m, current_nels, nels, lws, current_nwg - 1, false, ibrid_version) ;
 		}
 
 		clWaitForEvents(3, scan_evt) ; 
@@ -365,17 +359,17 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 					1, &read_evt_last_value, &unmap_evt_last_value);
 		ocl_check(err, "unmap gt");
 
-		cl_event partition_evt = partition(resources->que, &k,  &m, sum_lt, sum_gt, curr_seq, current_nels, lws, current_nwg_split_partion) ; 
+		cl_event partition_evt = partition(resources->que, &k,  &m, sum_lt, sum_gt, curr_seq, current_nels, lws, current_nwg) ; 
 		clWaitForEvents(1, &partition_evt) ;
 
 		cl_event partition_copy_evt ; 
 
-		if(vect_4){
-			partition_copy_evt = partition_copy(resources->que, &k, &m, curr_seq.sstart, current_nels, lws, current_nwg_split_partion, true) ;
+		if(vect_4 || (ibrid_version && current_nels >= nels/6)){
+			partition_copy_evt = partition_copy(resources->que, &k, &m, curr_seq.sstart, current_nels, lws, current_nwg, true) ;
 			clWaitForEvents(1, &partition_copy_evt) ; 
 		}
 		else{
-			partition_copy_evt = partition_copy(resources->que, &k, &m, curr_seq.sstart, current_nels, lws, current_nwg_split_partion, false) ;
+			partition_copy_evt = partition_copy(resources->que, &k, &m, curr_seq.sstart, current_nels, lws, current_nwg, false) ;
 			clWaitForEvents(1, &partition_copy_evt) ;
 		}
 
@@ -471,7 +465,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 			t[iteration].partition_time = runtime_ns(partition_evt) ; 
 			t[iteration].partition_copy_time = runtime_ns(partition_copy_evt) ; 
 			s[iteration].current_nels = current_nels ; 
-			s[iteration].current_nwg = current_nwg_split_partion ; 
+			s[iteration].current_nwg = current_nwg ; 
 			iteration++; 
 		}
     }  

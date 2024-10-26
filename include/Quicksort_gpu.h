@@ -38,6 +38,6 @@ typedef struct{
     cl_mem send_arr ; 
 }device_memeory ; 
 
-float* quickSortGpu(const float* vec, const int nels, const int lws, const int nwg_cu, cl_resources* resources, const bool test_mode, const bool vect_4, const bool vect4_scan) ; 
+float* quickSortGpu(const float* vec, const int nels, const int lws, const int nwg_cu, cl_resources* resources, const bool test_mode, const bool vect_4, const bool vect4_scan, const bool ibrid_version) ; 
 
 #endif 
