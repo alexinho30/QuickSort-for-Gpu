@@ -50,17 +50,14 @@ if you want to test the algorithm with random data use
 
 -d distribution you want to use 
     [1 normal distribution]
-    [2 binomial distribution] 
-    [3 uniform distribution]
+    [2 uniform distribution]
 
 -p first parameter 
     [lower element for uniform distribution]
-    [number of tests for binomial distribution]
     [mean for normal distribution]
 
 -r second parameter 
     [greater element for uniform distribution]
-    [probability for binomial distribution]
     [standard deviation for normal distribution]
 
 Also you can choose to use an ibrid version or only gpu version changing the threshold in the quicksort_gpu.c file .
