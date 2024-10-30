@@ -56,15 +56,15 @@ void bench_mark(times* t, const int num_iteration, const sequences_info* s, cons
 				(sizeof(cl_int)*(2*s[iteration].current_nels) + sizeof(cl_float)*(s[iteration].current_nels))/(double)t[iteration].split_elements_time) ;
 
 		fprintf(f, "partial scan evt : %lu ns\t %.4g GE/s\t %.4g GB/s\n", 
-				t[iteration].partial_scan_time, (4*s[iteration].current_nels + s[iteration].current_nwg)/(double)t[iteration].partial_scan_time, 
-				sizeof(cl_int)*(4*s[iteration].current_nels +s[iteration].current_nwg)/(double)t[iteration].partial_scan_time) ;
+				t[iteration].partial_scan_time, (4*s[iteration].current_nels + 2*s[iteration].current_nwg)/(double)t[iteration].partial_scan_time, 
+				sizeof(cl_int)*(4*s[iteration].current_nels +2*s[iteration].current_nwg)/(double)t[iteration].partial_scan_time) ;
 
 		fprintf(f, "scan tails evt : %lu ns\t %.4g GE/s\t %.4g GB/s\n", 
 				t[iteration].scan_tails_time, (4*s[iteration].current_nwg)/(double)t[iteration].scan_tails_time, 
 				sizeof(cl_int)*(4*s[iteration].current_nwg)/(double)t[iteration].scan_tails_time) ;
 
 		fprintf(f, "scan update evt : %lu ns\t %.4g GE/s\t %.4g GB/s\n", 
-			t[iteration].scan_update_time, ((2*s[iteration].current_nels + 2*s[iteration].current_nwg)- lws)/(double)t[iteration].scan_update_time, 
+			t[iteration].scan_update_time, (2*(s[iteration].current_nels-lws) + 2*(s[iteration].current_nwg - 1))/(double)t[iteration].scan_update_time, 
 			sizeof(cl_int)*(2*(s[iteration].current_nels-lws) + 2*(s[iteration].current_nwg - 1))/(double)t[iteration].scan_update_time) ;
 
 		fprintf(f, "partition evt : %lu ns\t %.4g GE/s\t %.4g GB/s\n", 
