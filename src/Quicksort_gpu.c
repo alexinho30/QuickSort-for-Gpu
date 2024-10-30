@@ -293,7 +293,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 
 		cl_event evt_split_elements ; 
 
-		if(vect_4 || (ibrid_version && current_nels >= nels/6)){
+		if(vect_4 ){
 			evt_split_elements = split_elements(resources->que, &k, &m, current_nels, curr_seq.sstart, lws, curr_seq.pivot_value, current_nwg, true) ; 
 		}
 		else{
@@ -364,7 +364,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 
 		cl_event partition_copy_evt ; 
 
-		if(vect_4 || (ibrid_version && current_nels >= nels/6)){
+		if(vect_4){
 			partition_copy_evt = partition_copy(resources->que, &k, &m, curr_seq.sstart, current_nels, lws, current_nwg, true) ;
 			clWaitForEvents(1, &partition_copy_evt) ; 
 		}
