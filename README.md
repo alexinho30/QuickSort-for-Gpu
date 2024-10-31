@@ -40,7 +40,7 @@ to compile use make
 
 if you want to order your own array use
 
-./main  -i test/input.txt -o test/output.txt
+./main  -i test/input.txt -o test/output.txt -m -x 
 
 if you want to test the algorithm with random data use
 
