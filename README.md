@@ -40,11 +40,11 @@ to compile use make
 
 if you want to order your own array use
 
-./main  -f test/input.txt -o test/output.txt -i -c -v
+./main  -l[lws] -g[nwg] -f test/input.txt -o test/output.txt -i -c -v
 
 if you want to test the algorithm with random data use
 
-./main -t -i[ibrid version] -c[scan vectorized] -v[split/partioning vectorized] -s [seed] -n[number of elements] -d [distrisbution] -p[first parameter of distribution ] -r [second parameter of the distribution]
+./main -l[lws] -g[nwg] -t -i[ibrid version] -c[scan vectorized] -v[split/partioning vectorized] -s [seed] -n[number of elements] -d [distrisbution] -p[first parameter of distribution ] -r [second parameter of the distribution]
 
 -t means that you are using test mode so write it
 -i use vectorization only for big sequences
