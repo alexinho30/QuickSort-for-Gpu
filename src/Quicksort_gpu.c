@@ -526,6 +526,7 @@ float* quickSortGpu(const float* vec,  const int nels, const int lws, const int 
 	
 	clWaitForEvents(1, &final_partition_lmem_evt) ;  
 	unsigned long final_partition_lmem_time = runtime_ns( final_partition_lmem_evt) ; 
+	printf("number of initial sequences : %d\n", seq_arr_dim) ; 
 	printf("final partition lmem kernel : %.4gs\n", final_partition_lmem_time/(1.0e9)) ; 
 
 	quicksort_gpu_end = clock() ; 
