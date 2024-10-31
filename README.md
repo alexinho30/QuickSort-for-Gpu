@@ -44,7 +44,7 @@ if you want to order your own array use
 
 if you want to test the algorithm with random data use
 
-./main -t -s [seed] -n[number of elements] -d [distrisbution] -p[first parameter of distribution ] -r [second parameter of the distribution]
+./main -l[lws] -g[work group] -t -s [seed] -n[number of elements] -d [distrisbution] -p[first parameter of distribution ] -r [second parameter of the distribution]
 
 -t means that you are using test mode so write it 
 
