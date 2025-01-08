@@ -343,20 +343,45 @@ kernel void quicksort_lmem(const int nsequences, global float* restrict in, glob
                 }
 
                 if(li == 0){
+
+                    const int first_seq_start = current_sequence.sstart ; 
+                    const int first_seq_end = current_sequence.sstart +  sum_lt - 1 ; 
+
+                    const int second_seq_start = current_sequence.send - sum_gt + 1 ; 
+                    const int second_seq_end = current_sequence.send ;
+
                     for(int j = current_sequence.sstart + sum_lt ; j < current_sequence.send - sum_gt + 1 ; j++){
                         in[j] = current_sequence.pivot_value ; 
                     }
 
-                    if(sum_lt >= 2){ 
-                        queue_sstart[last_sequence_to_process] = current_sequence.sstart ; 
-                        queue_send[last_sequence_to_process] = current_sequence.sstart +  sum_lt - 1 ; 
-                        last_sequence_to_process = (last_sequence_to_process + 1)%QUEUE_SIZE ; 
+                    if(sum_lt >= 2){
+                        if(sum_lt == 2){
+                            if(in[first_seq_start] > in[first_seq_end]){
+                                float x = in[first_seq_start] ; 
+                                in[first_seq_start] = in[first_seq_end] ; 
+                                in[first_seq_end] = x ; 
+                            }
+                        }
+                        else{
+                            queue_sstart[last_sequence_to_process] = first_seq_start ; 
+                            queue_send[last_sequence_to_process] = first_seq_end; 
+                            last_sequence_to_process = (last_sequence_to_process + 1)%QUEUE_SIZE ;
+                        }
                     }
 
-                    if(sum_gt >= 2){ 
-                        queue_sstart[last_sequence_to_process] = current_sequence.send - sum_gt + 1 ; 
-                        queue_send[last_sequence_to_process] = current_sequence.send ; 
-                        last_sequence_to_process = (last_sequence_to_process + 1)%QUEUE_SIZE ;  
+                    if(sum_gt >= 2){
+                        if(sum_gt == 2){
+                            if(in[second_seq_start] > in[second_seq_end]){
+                                float x = in[second_seq_start] ; 
+                                in[second_seq_start] = in[second_seq_end] ; 
+                                in[second_seq_end] = x ; 
+                            }
+                        }
+                        else{
+                            queue_sstart[last_sequence_to_process] = second_seq_start ; 
+                            queue_send[last_sequence_to_process] = second_seq_end ; 
+                            last_sequence_to_process = (last_sequence_to_process + 1)%QUEUE_SIZE ; 
+                        }  
                     }
                      
                     curr_sequence = (curr_sequence + 1)%QUEUE_SIZE ; 
