@@ -32,8 +32,6 @@ kernel void init_vec_uniform(global float* restrict in, global const float* rest
     }
 }
 
-
-
 kernel void split_elements(const int nels, const int sstart, global const float * restrict in,  
 const float pivot, global int* restrict bit_array_sup, global int* restrict bit_array_inf
 ){
@@ -42,22 +40,12 @@ const float pivot, global int* restrict bit_array_sup, global int* restrict bit_
 
     while(i < nels){
         float v = in[sstart + i] ;
-
-        if(v < pivot){
-            bit_array_inf[i] = 1 ;
-            bit_array_sup[i] = 0 ;  
-        }
-        else if(v > pivot){
-            bit_array_sup[i] = 1 ;
-            bit_array_inf[i] = 0 ;  
-        } 
-        else{
-            bit_array_sup[i] = 0 ; 
-            bit_array_inf[i] = 0 ;  
-        }
+        bit_array_inf[i] = v < pivot ? 1 : 0 ; 
+        bit_array_sup[i] = v > pivot ? 1 : 0 ; 
         i += gs ;
     }
 }
+
 
 kernel void scan(const int nels, global int* restrict bit_map_sup, global int* restrict bit_map_inf, 
 global int* restrict tails_inf, global int* restrict tails_sup){
@@ -204,12 +192,14 @@ global const int* restrict bit_map_sup, global const int* restrict bit_map_inf){
         i+=get_global_size(0) ; 
     }
 
-    if(get_group_id(0) == 0 && get_local_id(0) == 0){
-        for(int j = sstart + lt ; j < send - gt + 1; j++){
-            out[j]= pivot_value ; 
-        }
-    }   
+    int p = get_global_id(0) ; 
+
+    if(p < nels - gt - lt){
+        out[p + sstart + lt] = pivot_value; 
+    }  
 }
+
+
 
 kernel void partition_copy(const int nels, const int sstart, global float* restrict in, global float* restrict out){
 
@@ -271,25 +261,13 @@ kernel void quicksort_lmem(const int nsequences, global float* restrict in, glob
 
                 float v = 0; 
 
-                if(current_sequence.sstart + li <= current_sequence.send){
-                    v = in[current_sequence.sstart + li] ;  
+                bit_array_inf[li] = 0 ; 
+                bit_array_sup[li] = 0 ;
 
-                    if(v > current_sequence.pivot_value){
-                        bit_array_inf[li] = 0 ; 
-                        bit_array_sup[li] = 1 ; 
-                    }
-                    else if(v < current_sequence.pivot_value){
-                        bit_array_inf[li] = 1 ; 
-                        bit_array_sup[li] = 0 ;
-                    }
-                    else{
-                        bit_array_inf[li] = 0 ; 
-                        bit_array_sup[li] = 0 ;
-                    }
-                }
-                else{
-                    bit_array_inf[li] = 0 ; 
-                    bit_array_sup[li] = 0 ;
+                if(current_sequence.sstart + li <= current_sequence.send){
+                    v = in[current_sequence.sstart + li] ; 
+                    bit_array_inf[li] = v < current_sequence.pivot_value ? 1: 0 ;
+                    bit_array_sup[li] = v > current_sequence.pivot_value ? 1: 0 ;
                 }
 
                 int div = 1 ; 
